@@ -18,9 +18,11 @@ var lgtm = builder.AddContainer("lgtm", "grafana/otel-lgtm", "0.40.0")
 
 var otlp = lgtm.GetEndpoint("otlp-http");
 
-// TODO(F0): wire these into the services (orders -> Postgres, catalog -> Redis) for infra-level scenarios.
+// orders-api stores orders in Postgres. No data volume: the database starts empty on every run, which is what a lab wants.
 var postgres = builder.AddPostgres("postgres");
 var ordersDb = postgres.AddDatabase("ordersdb");
+
+// TODO(F2): wire Redis into catalog-api (cache) if a cache-related scenario is added.
 var redis = builder.AddRedis("redis");
 
 // Services send OTLP to LGTM instead of the Aspire dashboard. Trade-off documented in docs/adr/0002.
@@ -32,6 +34,8 @@ var catalog = builder.AddProject<Projects.IncidentLab_CatalogApi>("catalog-api")
 var orders = builder.AddProject<Projects.IncidentLab_OrdersApi>("orders-api")
     .WithReference(catalog)
     .WaitFor(catalog)
+    .WithReference(ordersDb)
+    .WaitFor(ordersDb)
     .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlp)
     .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
 

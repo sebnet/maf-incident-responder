@@ -1,27 +1,34 @@
-using System.Collections.Concurrent;
 using IncidentLab.Platform;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddRuntimeOverrides();
 
+// "ordersdb" comes from the AppHost. Aspire.Npgsql registers an NpgsqlDataSource (the connection pool) and adds
+// Npgsql traces, pool metrics and a health check. Pool limits are explicit so that scenario s03 (pool exhaustion)
+// produces exactly the driver error it describes.
+builder.AddNpgsqlDataSource("ordersdb", configureDataSourceBuilder: dataSource =>
+{
+    dataSource.ConnectionStringBuilder.MaxPoolSize = 20;
+    dataSource.ConnectionStringBuilder.Timeout = 15; // seconds to wait for a connection, including a free pool slot
+});
+
 // "https+http://catalog-api" is resolved by Aspire service discovery.
 builder.Services.AddHttpClient<CatalogClient>(client => client.BaseAddress = new Uri("https+http://catalog-api"));
 
-// TODO(F0): replace the in-memory store with Postgres (Aspire.Npgsql + the "ordersdb" resource in the AppHost)
-// so that scenario s03 (connection pool exhaustion) can be implemented for real.
-builder.Services.AddSingleton<ConcurrentDictionary<Guid, Order>>();
-
 var app = builder.Build();
+
+await OrdersStore.EnsureSchemaAsync(app.Services.GetRequiredService<NpgsqlDataSource>());
 
 app.UseRuntimeOverrides();
 app.MapDefaultEndpoints();
 app.MapRuntimeOverrideEndpoints();
 
-app.MapGet("/orders", (ConcurrentDictionary<Guid, Order> store) => store.Values.OrderByDescending(o => o.CreatedAt).Take(50));
+app.MapGet("/orders", (NpgsqlDataSource db, CancellationToken ct) => OrdersStore.GetLatestAsync(db, limit: 50, ct));
 
-app.MapPost("/orders", async (CreateOrder request, CatalogClient catalog, ConcurrentDictionary<Guid, Order> store, ILogger<Program> logger, CancellationToken ct) =>
+app.MapPost("/orders", async (CreateOrder request, CatalogClient catalog, NpgsqlDataSource db, ILogger<Program> logger, CancellationToken ct) =>
 {
     var item = await catalog.GetItemAsync(request.ItemId, ct);
     if (item is null)
@@ -29,8 +36,8 @@ app.MapPost("/orders", async (CreateOrder request, CatalogClient catalog, Concur
         return Results.NotFound();
     }
 
-    var order = new Order(Guid.NewGuid(), item.Id, request.Quantity, item.Price * request.Quantity, DateTimeOffset.UtcNow);
-    store[order.Id] = order;
+    var order = new Order(Guid.CreateVersion7(), item.Id, request.Quantity, item.Price * request.Quantity, DateTimeOffset.UtcNow);
+    await OrdersStore.InsertAsync(db, order, ct);
 
     Log.OrderCreated(logger, order.Id, order.ItemId, order.Quantity);
     return Results.Created($"/orders/{order.Id}", order);
@@ -49,6 +56,57 @@ internal sealed record CreateOrder(int ItemId, int Quantity);
 internal sealed record Order(Guid Id, int ItemId, int Quantity, decimal Total, DateTimeOffset CreatedAt);
 
 internal sealed record CatalogItem(int Id, string Name, decimal Price);
+
+/// <summary>Plain SQL over the pooled data source. Every call borrows a connection from the pool and returns it.</summary>
+internal static class OrdersStore
+{
+    public static async Task EnsureSchemaAsync(NpgsqlDataSource db, CancellationToken ct = default)
+    {
+        await using var cmd = db.CreateCommand("""
+            CREATE TABLE IF NOT EXISTS orders (
+                id         uuid           PRIMARY KEY,
+                item_id    integer        NOT NULL,
+                quantity   integer        NOT NULL,
+                total      numeric(12, 2) NOT NULL,
+                created_at timestamptz    NOT NULL
+            );
+            """);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public static async Task InsertAsync(NpgsqlDataSource db, Order order, CancellationToken ct)
+    {
+        await using var cmd = db.CreateCommand(
+            "INSERT INTO orders (id, item_id, quantity, total, created_at) VALUES ($1, $2, $3, $4, $5)");
+        cmd.Parameters.Add(new NpgsqlParameter { Value = order.Id });
+        cmd.Parameters.Add(new NpgsqlParameter { Value = order.ItemId });
+        cmd.Parameters.Add(new NpgsqlParameter { Value = order.Quantity });
+        cmd.Parameters.Add(new NpgsqlParameter { Value = order.Total });
+        cmd.Parameters.Add(new NpgsqlParameter { Value = order.CreatedAt });
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public static async Task<List<Order>> GetLatestAsync(NpgsqlDataSource db, int limit, CancellationToken ct)
+    {
+        await using var cmd = db.CreateCommand(
+            "SELECT id, item_id, quantity, total, created_at FROM orders ORDER BY created_at DESC LIMIT $1");
+        cmd.Parameters.Add(new NpgsqlParameter { Value = limit });
+
+        var orders = new List<Order>(limit);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            orders.Add(new Order(
+                reader.GetGuid(0),
+                reader.GetInt32(1),
+                reader.GetInt32(2),
+                reader.GetDecimal(3),
+                reader.GetFieldValue<DateTimeOffset>(4)));
+        }
+
+        return orders;
+    }
+}
 
 internal sealed class CatalogClient(HttpClient http)
 {
