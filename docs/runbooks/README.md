@@ -3,6 +3,12 @@
 One runbook per failure mode, written the way an SRE team would (Phase 0 task). In Phase 2 they become the
 RAG corpus of the responder.
 
+| Runbook | Failure mode |
+|---|---|
+| [orders-api-5xx-from-catalog-api.md](orders-api-5xx-from-catalog-api.md) | orders-api errors caused by a failing dependency |
+| [orders-api-high-latency.md](orders-api-high-latency.md) | orders-api slow with no errors |
+| [orders-api-postgres-pool-exhausted.md](orders-api-postgres-pool-exhausted.md) | orders-api cannot get Postgres connections |
+
 Suggested format:
 
 ```markdown
