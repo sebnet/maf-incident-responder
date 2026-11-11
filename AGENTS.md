@@ -130,6 +130,7 @@ everything else = latest stable patch.
 | Microsoft.Extensions.Hosting / Http | 10.0.15 | ☑ | 10.0.x servicing line; Aspire 13.6.5 needs ≥ 10.0.14 |
 | OpenTelemetry (core / instrumentation) | 1.21.0 / 1.20.x | ☑ | released separately |
 | xunit.v3.mtp-v2 | 4.0.3 | ☑ | latest patch |
+| `grafana/otel-lgtm` image | 0.40.0 | ☑ | pinned in `AppHost.cs`, not in props |
 
 Never float versions. Upgrading MAF is a deliberate, separate commit (`chore(deps): bump MAF to x.y.z`) followed
 by a full test + eval run — and it is blog material ("what changed between versions").
@@ -229,8 +230,4 @@ dotnet run
 ## 12. Open verification items (Phase 0)
 
 Remove this section once Phase 0 is done.
-- `grafana/otel-lgtm` internal ports for Loki/Prometheus/Tempo (3100/9090/3200) — verify, or query through
-  Grafana's datasource proxy on :3000.
-- Overriding `OTEL_EXPORTER_OTLP_ENDPOINT` in the AppHost sends telemetry to LGTM instead of the Aspire dashboard
-  (ADR 0002). Verify the override wins.
 - `LgtmTelemetryQuery` is a stub (`NotImplementedException`) — implemented in Phase 1.

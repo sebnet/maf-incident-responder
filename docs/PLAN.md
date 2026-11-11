@@ -31,7 +31,7 @@ Tasks
 - [x] Run the AppHost; confirm all resources start (Docker Desktop must be running).
 - [x] Confirm telemetry reaches LGTM: open Grafana (:3000) → Explore → see logs (Loki), metrics (Prometheus),
       traces (Tempo) for `orders-api` and `catalog-api`.
-- [ ] Verify the Loki/Prometheus/Tempo HTTP APIs are reachable from the host (ports 3100/9090/3200), or switch
+- [x] Verify the Loki/Prometheus/Tempo HTTP APIs are reachable from the host (ports 3100/9090/3200), or switch
       to Grafana's datasource proxy. Record which labels exist (`service_name`? `detected_level`?) in
       `docs/notes/lgtm-labels.md`.
 - [ ] Inject s01 by hand (`POST /chaos` on catalog-api): see the orders-api error rate rise in Grafana and the
