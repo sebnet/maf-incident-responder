@@ -66,6 +66,18 @@ Most relevant for the scenarios:
 | `http_client_request_duration_seconds_{bucket,count,sum}` | `server_address`, `server_port`, `http_response_status_code` | outbound calls (orders → catalog) |
 | `http_server_active_requests`, `kestrel_queued_connections` | — | saturation |
 | `dotnet_thread_pool_queue_length`, `dotnet_gc_*`, `dotnet_exceptions_total` | — | runtime health |
+| `db_client_connection_count` | `db_client_connection_state` (`idle`/`used`), `db_client_connection_pool_name` | Postgres pool usage (orders-api) |
+| `db_client_connection_max` | `db_client_connection_pool_name` | pool size (20) |
+| `db_client_operation_duration_seconds_*` | — | query latency |
+
+`db_client_connection_pool_name` is the connection string **without the password** (Npgsql strips it). It contains
+the dynamic Postgres port, so don't filter by it: use `service_name`.
+
+```promql
+# pool saturation (1.0 = exhausted)
+sum by (service_name) (db_client_connection_count{db_client_connection_state="used"})
+  / sum by (service_name) (db_client_connection_max)
+```
 
 ```promql
 # error rate per service
@@ -96,7 +108,8 @@ Search with TraceQL: `GET /api/search?q=<traceql>&start=<unix s>&end=<unix s>&li
 ```
 
 A typical trace: `loadgen POST` → `orders-api POST /orders` → `orders-api GET` (HttpClient) →
-`catalog-api GET /items/{id:int}`. The root is `loadgen`, so search by `resource.service.name` for the span you
+`catalog-api GET /items/{id:int}`, plus an `orders-api` `postgresql` span (scope `Npgsql`) with `db.query.text`,
+`db.namespace` = `ordersdb`. The root is `loadgen`, so search by `resource.service.name` for the span you
 care about, not by `rootServiceName`.
 
 ## Gotchas

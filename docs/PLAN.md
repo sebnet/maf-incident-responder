@@ -37,7 +37,7 @@ Tasks
 - [x] Inject s01 by hand (`POST /_ops/runtime` on catalog-api; was `/chaos`): see the orders-api error rate rise in Grafana and the
       500s in Tempo traces crossing both services.
 - [x] Inject s02 by hand: see p95 latency rise with no errors.
-- [ ] Move orders-api to Postgres (Aspire.Npgsql + `ordersdb`) so s03 can become a real connection-pool problem.
+- [x] Move orders-api to Postgres (Aspire.Npgsql + `ordersdb`) so s03 can become a real connection-pool problem.
       *(Optional within the time box; otherwise carry it to Phase 2.)*
 - [ ] Write one runbook per scenario in `docs/runbooks/` (used for RAG in Phase 2). Short, the way an SRE team
       would actually write them.
