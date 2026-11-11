@@ -28,7 +28,7 @@ Tasks
 - [x] Verify package versions against nuget.org; fix `Directory.Packages.props`; fill the table in `AGENTS.md` §5.
 - [x] `dotnet build` + `dotnet test` green on your machine.
 - [x] Move `docs/setup/ci.yml` to `.github/workflows/ci.yml` (kept outside `.github/` during the initial setup), `git init`, first commit, push, and check CI is green.
-- [ ] Run the AppHost; confirm all resources start (Docker Desktop must be running).
+- [x] Run the AppHost; confirm all resources start (Docker Desktop must be running).
 - [ ] Confirm telemetry reaches LGTM: open Grafana (:3000) → Explore → see logs (Loki), metrics (Prometheus),
       traces (Tempo) for `orders-api` and `catalog-api`.
 - [ ] Verify the Loki/Prometheus/Tempo HTTP APIs are reachable from the host (ports 3100/9090/3200), or switch
