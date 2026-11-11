@@ -27,4 +27,26 @@ public sealed class RuntimeOverrideStateTests
 
         Assert.Throws<ArgumentOutOfRangeException>(() => state.Activate(new RuntimeOverrideRequest(OverrideKind.Errors, probability)));
     }
+
+    [Fact]
+    public void Hold_db_connections_keeps_connection_count_and_hold_time()
+    {
+        var state = new RuntimeOverrideState(TimeProvider.System);
+
+        var active = state.Activate(new RuntimeOverrideRequest(OverrideKind.HoldDbConnections, DelayMs: 20_000, Connections: 20));
+
+        Assert.Equal(20, active.Connections);
+        Assert.Equal(TimeSpan.FromSeconds(20), active.Delay);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(101)]
+    public void Rejects_connection_count_out_of_range(int connections)
+    {
+        var state = new RuntimeOverrideState(TimeProvider.System);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => state.Activate(new RuntimeOverrideRequest(OverrideKind.HoldDbConnections, Connections: connections)));
+    }
 }

@@ -12,8 +12,13 @@ builder.Services.AddRuntimeOverrides();
 builder.AddNpgsqlDataSource("ordersdb", configureDataSourceBuilder: dataSource =>
 {
     dataSource.ConnectionStringBuilder.MaxPoolSize = 20;
-    dataSource.ConnectionStringBuilder.Timeout = 15; // seconds to wait for a connection, including a free pool slot
+    // Seconds to wait for a connection, including a free pool slot. Must stay below the callers' 10 s per-attempt
+    // timeout (standard resilience handler): otherwise requests are cancelled before Npgsql reports "pool exhausted".
+    dataSource.ConnectionStringBuilder.Timeout = 5;
 });
+
+// Periodic export job. Also the injection point for scenario s03 (see the class comment).
+builder.Services.AddHostedService<OrderExportWorker>();
 
 // "https+http://catalog-api" is resolved by Aspire service discovery.
 builder.Services.AddHttpClient<CatalogClient>(client => client.BaseAddress = new Uri("https+http://catalog-api"));
@@ -70,6 +75,15 @@ internal static class OrdersStore
                 total      numeric(12, 2) NOT NULL,
                 created_at timestamptz    NOT NULL
             );
+
+            -- Used by OrderExportWorker. Slow on purpose (s03): it holds its connection for hold_seconds.
+            CREATE OR REPLACE FUNCTION export_order_snapshot(hold_seconds double precision) RETURNS bigint
+            LANGUAGE plpgsql AS $fn$
+            BEGIN
+                PERFORM pg_sleep(hold_seconds);
+                RETURN (SELECT count(*) FROM orders);
+            END
+            $fn$;
             """);
         await cmd.ExecuteNonQueryAsync(ct);
     }

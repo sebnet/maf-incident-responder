@@ -1,16 +1,15 @@
 {
   "id": "s03-db-pool-exhaustion",
   "title": "orders-api cannot get Postgres connections",
-  "status": "planned",
-  "why": "Infrastructure-level cause with a realistic driver error. Needs orders-api on Postgres (Phase 0 task).",
+  "status": "ready",
+  "why": "Infrastructure-level cause with the real driver error: a background export job holds every pooled connection (max 20), so requests wait 5 s and fail with Npgsql's 'connection pool has been exhausted'.",
   "inject": {
     "target": "orders-api",
     "fault": {
-      "kind": "Errors",
-      "probability": 0.7,
-      "errorMessage": "Npgsql.NpgsqlException: The connection pool has been exhausted, either raise 'Max Pool Size' (currently 20) or 'Timeout' (currently 15 seconds) in your connection string."
-    },
-    "todo": "Replace the simulated exception with a real one: a background job that holds connections open."
+      "kind": "HoldDbConnections",
+      "connections": 20,
+      "delayMs": 20000
+    }
   },
   "warmupSeconds": 120,
   "alert": {

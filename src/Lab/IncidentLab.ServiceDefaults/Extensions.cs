@@ -29,6 +29,7 @@ public static class Extensions
         builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
         builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
         builder.Logging.AddFilter("Polly", LogLevel.Warning);
+        builder.Logging.AddFilter("Npgsql", LogLevel.Warning); // logs every command at Information; DB spans carry that detail
 
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();

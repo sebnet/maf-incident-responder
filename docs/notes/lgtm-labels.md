@@ -48,7 +48,7 @@ Useful structured metadata per line:
 
 The log line itself is the rendered message.
 
-Volume: `Microsoft.AspNetCore`, `System.Net.Http.HttpClient` and `Polly` log at Warning and above (ServiceDefaults).
+Volume: `Microsoft.AspNetCore`, `System.Net.Http.HttpClient`, `Polly` and `Npgsql` log at Warning and above (ServiceDefaults).
 Before that, orders-api wrote about 1,400 `info` lines per minute; now it writes about 12 (its own "Order created" lines). During s01 the
 logs are mostly unhandled-exception errors and Polly retry warnings: signal, not noise. Log tools must still
 count and group, never return raw lines (AGENTS.md §6.4).
