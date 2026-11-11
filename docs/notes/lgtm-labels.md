@@ -48,9 +48,10 @@ Useful structured metadata per line:
 
 The log line itself is the rendered message.
 
-Volume: about 1,400 lines per minute for orders-api at steady load (about 3.8 req/s), all `info`, mostly ASP.NET Core,
-HttpClient and Polly categories. Log tools must count and group, never return raw lines (AGENTS.md §6.4).
-TODO(F1): lower the default log level for `Microsoft.AspNetCore`, `System.Net.Http` and `Polly` in the lab services.
+Volume: `Microsoft.AspNetCore`, `System.Net.Http.HttpClient` and `Polly` log at Warning and above (ServiceDefaults).
+Before that, orders-api wrote about 1,400 `info` lines per minute; now it writes about 12 (its own "Order created" lines). During s01 the
+logs are mostly unhandled-exception errors and Polly retry warnings: signal, not noise. Log tools must still
+count and group, never return raw lines (AGENTS.md §6.4).
 
 ## Prometheus (metrics)
 
