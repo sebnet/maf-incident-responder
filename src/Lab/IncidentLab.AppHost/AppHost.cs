@@ -5,10 +5,9 @@ var builder = DistributedApplication.CreateBuilder(args);
 // + Tempo (traces) + Grafana UI, in a single container. This is what the responder QUERIES.
 // The Aspire dashboard is great for you, but it has no query API for the agent.
 //
-// TODO(F0): verify the internal ports of the image (3100 Loki, 9090 Prometheus, 3200 Tempo).
-// Alternative if they are not reachable: query through Grafana's datasource proxy on :3000.
+// Image tag pinned (never float versions). Ports and labels verified: docs/notes/lgtm-labels.md.
 // ---------------------------------------------------------------------------------------------
-var lgtm = builder.AddContainer("lgtm", "grafana/otel-lgtm")
+var lgtm = builder.AddContainer("lgtm", "grafana/otel-lgtm", "0.40.0")
     .WithHttpEndpoint(port: 3000, targetPort: 3000, name: "grafana")
     // No fixed host port for OTLP: services get it through GetEndpoint below, and 4318 is often taken
     // (any other Aspire dashboard or collector on the machine). Fixed ports only where humans/the CLI need them.
