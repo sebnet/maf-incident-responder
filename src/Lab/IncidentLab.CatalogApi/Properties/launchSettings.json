@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "IncidentLab.CatalogApi": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:65446;http://localhost:65448"
+    }
+  }
+}

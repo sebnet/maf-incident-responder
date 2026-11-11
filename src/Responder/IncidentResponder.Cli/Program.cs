@@ -1,0 +1,68 @@
+using IncidentResponder.Agents;
+using IncidentResponder.Core;
+using IncidentResponder.Telemetry;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+// Phase 1 entry point: an interactive on-call assistant in the terminal.
+// Config: appsettings.json + user-secrets (Development). See README "Run".
+var builder = Host.CreateApplicationBuilder(args);
+
+var endpoint = builder.Configuration["Foundry:ProjectEndpoint"];
+if (string.IsNullOrWhiteSpace(endpoint))
+{
+    Console.Error.WriteLine("Foundry:ProjectEndpoint is not set. Run: dotnet user-secrets set \"Foundry:ProjectEndpoint\" \"https://<resource>.services.ai.azure.com/api/projects/<project>\"");
+    return 1;
+}
+
+var model = builder.Configuration["Foundry:Model"] ?? "gpt-5.4-mini";
+var lgtm = new LgtmOptions(
+    new Uri(builder.Configuration["Lgtm:Loki"] ?? LgtmOptions.LocalDefaults.Loki.ToString()),
+    new Uri(builder.Configuration["Lgtm:Prometheus"] ?? LgtmOptions.LocalDefaults.Prometheus.ToString()),
+    new Uri(builder.Configuration["Lgtm:Tempo"] ?? LgtmOptions.LocalDefaults.Tempo.ToString()));
+
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton(lgtm);
+builder.Services.AddHttpClient<ITelemetryQuery, LgtmTelemetryQuery>();
+builder.Services.AddSingleton<TelemetryTools>();
+builder.Services.AddSingleton<ToolCallMiddleware>();
+builder.Services.AddSingleton<IChatClient>(_ => ChatClientFactory.CreateFoundry(new Uri(endpoint), model));
+builder.Services.AddSingleton(sp => OnCallAssistant.Create(
+    sp.GetRequiredService<IChatClient>(),
+    sp.GetRequiredService<TelemetryTools>(),
+    sp.GetRequiredService<ToolCallMiddleware>()));
+
+using var host = builder.Build();
+
+var agent = host.Services.GetRequiredService<AIAgent>();
+AgentSession session = await agent.CreateSessionAsync();
+
+Console.WriteLine($"{OnCallAssistant.Name} ({model}). Ask e.g. \"what's wrong with orders-api?\". Empty line to exit, /new for a new session.");
+while (true)
+{
+    Console.Write("\n> ");
+    var input = Console.ReadLine();
+    if (string.IsNullOrWhiteSpace(input))
+    {
+        break;
+    }
+
+    if (input.Trim() == "/new")
+    {
+        session = await agent.CreateSessionAsync();
+        Console.WriteLine("(new session)");
+        continue;
+    }
+
+    await foreach (var update in agent.RunStreamingAsync(input, session))
+    {
+        Console.Write(update);
+    }
+
+    Console.WriteLine();
+}
+
+return 0;

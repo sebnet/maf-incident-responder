@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "IncidentResponder.Cli": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

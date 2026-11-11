@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <!-- CA1707: test names use underscores on purpose (they describe behaviour, see AGENTS.md §9). -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- xunit v3 does not add this global using itself (the MAF repo's tests do the same). -->
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Responder\IncidentResponder.Core\IncidentResponder.Core.csproj" />
+    <ProjectReference Include="..\..\src\Responder\IncidentResponder.Agents\IncidentResponder.Agents.csproj" />
+    <ProjectReference Include="..\..\src\Lab\IncidentLab.Chaos\IncidentLab.Chaos.csproj" />
+  </ItemGroup>
+
+</Project>

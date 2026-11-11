@@ -1,0 +1,75 @@
+<Project>
+  <!--
+    Central Package Management. Every version lives here; .csproj files never carry a Version.
+
+    Verified against nuget.org on 2026-11-11 (Phase 0, task 1). Policy:
+    - MAF: latest stable. 1.28.0 also matches the local clone (dotnet/nuget/nuget-package.props, commit fe87fdd2e),
+      so the samples build against the same API we use.
+    - Anything MAF depends on (Microsoft.Extensions.AI, OpenAI, Azure.AI.*): the version MAF itself is built
+      against, not the newest on nuget. E.g. Microsoft.Extensions.AI 11.0.0 exists, but MAF 1.28.0 targets 10.11.0.
+    - Everything else (Aspire, OpenTelemetry, Microsoft.Extensions.*, test runner): latest stable patch.
+    Upgrades are deliberate, separate commits (see AGENTS.md §5).
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+
+    <MafVersion>1.28.0</MafVersion>
+    <AspireVersion>13.6.5</AspireVersion>
+    <MeaiVersion>10.11.0</MeaiVersion>
+    <ExtensionsVersion>10.0.15</ExtensionsVersion>
+    <OpenTelemetryVersion>1.21.0</OpenTelemetryVersion>
+  </PropertyGroup>
+
+  <ItemGroup Label="Microsoft Agent Framework">
+    <PackageVersion Include="Microsoft.Agents.AI" Version="$(MafVersion)" />
+    <!-- Uncomment as each phase needs them (see docs/PLAN.md). Some are preview/alpha: check the exact version string on nuget. -->
+    <!-- Phase 3: <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="$(MafVersion)" /> -->
+    <!-- Phase 2: <PackageVersion Include="ModelContextProtocol" Version="2.2.0" />  (MAF clone pins 2.2.0; nuget has 2.4.0) -->
+    <!-- Phase 4: <PackageVersion Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" Version="(preview)" /> -->
+    <!-- Phase 4: <PackageVersion Include="Microsoft.Agents.AI.Foundry" Version="(preview)" /> -->
+    <!-- Phase 5: <PackageVersion Include="Microsoft.Agents.AI.Harness" Version="$(MafVersion)" /> -->
+  </ItemGroup>
+
+  <ItemGroup Label="Microsoft.Extensions.AI + model access (Foundry via IChatClient)">
+    <!-- Must match what Microsoft.Agents.AI depends on (1.28.0 → 10.11.0). -->
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="$(MeaiVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="$(MeaiVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="$(MeaiVersion)" />
+    <!-- Microsoft.Extensions.AI.OpenAI 10.11.0 is built against OpenAI 2.14.0 (2.15.0 exists). -->
+    <PackageVersion Include="OpenAI" Version="2.14.0" />
+    <!-- Same as the MAF clone. beta.6 exists but, like beta.5, depends on an unpublished alpha of
+         Azure.AI.Extensions.OpenAI; move when MAF moves. -->
+    <PackageVersion Include="Azure.AI.Projects" Version="3.0.0-beta.5" />
+    <!-- Azure.AI.Projects 3.0.0-beta.5 depends on an unpublished alpha of this package; the MAF repo pins it explicitly. -->
+    <PackageVersion Include="Azure.AI.Extensions.OpenAI" Version="3.0.0-beta.5" />
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Hosting">
+    <!-- Stay on the 10.0.x servicing line (net10.0). 11.0.0 belongs to .NET 11. Aspire 13.6.5 needs ≥ 10.0.14. -->
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="$(ExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="$(ExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.11.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Aspire (lab)">
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="$(AspireVersion)" />
+    <PackageVersion Include="Aspire.Hosting.Redis" Version="$(AspireVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Label="OpenTelemetry">
+    <!-- Core packages and instrumentation packages are released on different cadences. -->
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="$(OpenTelemetryVersion)" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="$(OpenTelemetryVersion)" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.2" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.2" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.3" />
+  </ItemGroup>
+</Project>

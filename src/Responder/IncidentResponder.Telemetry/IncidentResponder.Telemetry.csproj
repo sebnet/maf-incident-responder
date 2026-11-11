@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Infrastructure: talks HTTP to Loki / Prometheus / Tempo. No MAF here either. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\IncidentResponder.Core\IncidentResponder.Core.csproj" />
+  </ItemGroup>
+
+</Project>

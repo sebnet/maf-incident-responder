@@ -1,0 +1,25 @@
+{
+  "id": "s02-orders-latency",
+  "title": "orders-api itself is slow; no errors",
+  "status": "ready",
+  "why": "No error logs at all. Tests that the agent uses metrics/traces and does not invent an error.",
+  "inject": {
+    "target": "orders-api",
+    "fault": {
+      "kind": "Latency",
+      "probability": 0.8,
+      "delayMs": 2500
+    }
+  },
+  "warmupSeconds": 90,
+  "alert": {
+    "service": "orders-api",
+    "signal": "p95_latency_ms",
+    "description": "orders-api p95 latency above 1500 ms for 2 minutes"
+  },
+  "expected": {
+    "rootCauseService": "orders-api",
+    "category": "Latency",
+    "mustMention": ["latency"]
+  }
+}

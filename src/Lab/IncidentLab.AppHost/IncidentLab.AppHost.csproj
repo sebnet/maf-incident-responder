@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Same pattern as agent-framework/dotnet/samples/05-end-to-end/DevUIAspireIntegration -->
+  <Sdk Name="Aspire.AppHost.Sdk" Version="$(AspireVersion)" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>incident-lab-apphost</UserSecretsId>
+    <!-- ASPIRE010: building without the Aspire CLI bundle (not available on CI). The MAF repo suppresses it too. -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="Aspire.Hosting.Redis" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IncidentLab.CatalogApi\IncidentLab.CatalogApi.csproj" />
+    <ProjectReference Include="..\IncidentLab.OrdersApi\IncidentLab.OrdersApi.csproj" />
+    <ProjectReference Include="..\IncidentLab.LoadGen\IncidentLab.LoadGen.csproj" />
+  </ItemGroup>
+
+</Project>

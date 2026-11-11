@@ -1,0 +1,31 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="AGENTS.md" />
+    <File Path="CLAUDE.md" />
+    <File Path="README.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/PLAN.md" />
+    <File Path="docs/ARCHITECTURE.md" />
+  </Folder>
+  <Folder Name="/src/Lab/">
+    <Project Path="src/Lab/IncidentLab.AppHost/IncidentLab.AppHost.csproj" />
+    <Project Path="src/Lab/IncidentLab.ServiceDefaults/IncidentLab.ServiceDefaults.csproj" />
+    <Project Path="src/Lab/IncidentLab.Chaos/IncidentLab.Chaos.csproj" />
+    <Project Path="src/Lab/IncidentLab.CatalogApi/IncidentLab.CatalogApi.csproj" />
+    <Project Path="src/Lab/IncidentLab.OrdersApi/IncidentLab.OrdersApi.csproj" />
+    <Project Path="src/Lab/IncidentLab.LoadGen/IncidentLab.LoadGen.csproj" />
+  </Folder>
+  <Folder Name="/src/Responder/">
+    <Project Path="src/Responder/IncidentResponder.Core/IncidentResponder.Core.csproj" />
+    <Project Path="src/Responder/IncidentResponder.Telemetry/IncidentResponder.Telemetry.csproj" />
+    <Project Path="src/Responder/IncidentResponder.Agents/IncidentResponder.Agents.csproj" />
+    <Project Path="src/Responder/IncidentResponder.Cli/IncidentResponder.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/IncidentResponder.Tests/IncidentResponder.Tests.csproj" />
+  </Folder>
+</Solution>

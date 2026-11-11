@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The domain of the responder. NO dependencies on MAF, Microsoft.Extensions.AI or any model SDK.
+    If you feel the need to reference them here, the code belongs in IncidentResponder.Agents.
+  -->
+
+</Project>

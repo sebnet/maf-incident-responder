@@ -1,0 +1,25 @@
+{
+  "id": "s01-catalog-errors",
+  "title": "catalog-api throws on item lookup; orders-api alerts",
+  "status": "ready",
+  "why": "The alerting service is not the root cause. Tests that the agent follows the dependency.",
+  "inject": {
+    "target": "catalog-api",
+    "fault": {
+      "kind": "Errors",
+      "probability": 0.6,
+      "errorMessage": "Cannot read item price: value 'NaN' is not a valid decimal (catalog index corrupted)"
+    }
+  },
+  "warmupSeconds": 90,
+  "alert": {
+    "service": "orders-api",
+    "signal": "error_rate",
+    "description": "orders-api error rate above 5% for 2 minutes"
+  },
+  "expected": {
+    "rootCauseService": "catalog-api",
+    "category": "DependencyFailure",
+    "mustMention": ["catalog-api"]
+  }
+}

@@ -1,0 +1,36 @@
+# Build output
+bin/
+obj/
+artifacts/
+TestResults/
+*.trx
+
+# IDEs
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.user
+*.suo
+
+# Personal agent preferences
+CLAUDE.local.md
+
+# Secrets — never commit endpoints, keys or local overrides
+.env
+*.env
+appsettings.*.local.json
+secrets.json
+
+# Aspire
+.aspire/
+
+# Evals: raw runs are local; curated summaries in evals/results/ ARE committed
+evals/runs/
+
+# Agent scratch files (harness file memory, postmortem drafts, etc.)
+agent-files/
+
+# OS
+.DS_Store
+Thumbs.db
