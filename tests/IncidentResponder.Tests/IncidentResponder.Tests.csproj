@@ -19,7 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Responder\IncidentResponder.Core\IncidentResponder.Core.csproj" />
     <ProjectReference Include="..\..\src\Responder\IncidentResponder.Agents\IncidentResponder.Agents.csproj" />
-    <ProjectReference Include="..\..\src\Lab\IncidentLab.Chaos\IncidentLab.Chaos.csproj" />
+    <ProjectReference Include="..\..\src\Lab\IncidentLab.Platform\IncidentLab.Platform.csproj" />
   </ItemGroup>
 
 </Project>

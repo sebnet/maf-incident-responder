@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
-using IncidentLab.Chaos;
+using IncidentLab.Platform;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-builder.Services.AddChaos();
+builder.Services.AddRuntimeOverrides();
 
 // "https+http://catalog-api" is resolved by Aspire service discovery.
 builder.Services.AddHttpClient<CatalogClient>(client => client.BaseAddress = new Uri("https+http://catalog-api"));
@@ -15,9 +15,9 @@ builder.Services.AddSingleton<ConcurrentDictionary<Guid, Order>>();
 
 var app = builder.Build();
 
-app.UseChaos();
+app.UseRuntimeOverrides();
 app.MapDefaultEndpoints();
-app.MapChaosEndpoints();
+app.MapRuntimeOverrideEndpoints();
 
 app.MapGet("/orders", (ConcurrentDictionary<Guid, Order> store) => store.Values.OrderByDescending(o => o.CreatedAt).Take(50));
 

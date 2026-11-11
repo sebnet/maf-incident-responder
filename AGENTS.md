@@ -56,7 +56,7 @@ maf-incident-responder/
 │  ├─ Lab/                   ← Phase 0: the "victim" system (no MAF here)
 │  │  ├─ IncidentLab.AppHost         Aspire orchestration + grafana/otel-lgtm + Postgres + Redis
 │  │  ├─ IncidentLab.ServiceDefaults OTel, health, service discovery, resilience
-│  │  ├─ IncidentLab.Chaos           fault injection middleware + /chaos control endpoints
+│  │  ├─ IncidentLab.Platform        fault injection ("chaos") middleware + /_ops/runtime control endpoints
 │  │  ├─ IncidentLab.CatalogApi      minimal API
 │  │  ├─ IncidentLab.OrdersApi       minimal API, calls catalog-api
 │  │  └─ IncidentLab.LoadGen         background traffic (no traffic = no incident)
@@ -151,8 +151,12 @@ by a full test + eval run — and it is blog material ("what changed between ver
      (`ApprovalRequiredAIFunction` at tool level and/or `RequestPort` at workflow level). No exceptions.
 5. **The chaos must not leak the answer.**
    - Injected errors read like real production errors; never contain "chaos", "fault", "injected", "simulated".
-   - `/chaos`, `/health`, `/alive` are filtered out of traces (`ServiceDefaults`).
-   - Responder tools must never call `/chaos`. Only the eval runner does.
+   - The same goes for **code names that reach telemetry**: namespaces, type and file names appear in stack traces,
+     routes appear in request logs. That is why the fault injection library is `IncidentLab.Platform`
+     (`RequestPipelineMiddleware`, `/_ops/runtime`) and not "Chaos".
+   - `/_ops`, `/health`, `/alive` are filtered out of traces, and framework request logs are at Warning
+     (`ServiceDefaults`).
+   - Responder tools must never call `/_ops/runtime`. Only the eval runner does.
 6. **Evals ground truth comes from the injected scenario, never from a model.**
 7. **One kind of change per commit.** Don't mix a refactor, a prompt change and a new feature: otherwise eval
    deltas can't be attributed.
@@ -187,10 +191,10 @@ dotnet test --solution IncidentResponder.slnx
 # run the lab (needs Docker Desktop running): Aspire dashboard + Grafana on http://localhost:3000
 dotnet run --project src/Lab/IncidentLab.AppHost
 
-# inject / clear a fault (ports: see Aspire dashboard)
-curl -X POST https://localhost:<catalog-port>/chaos -H "Content-Type: application/json" \
+# inject / clear a fault (fixed ports from launchSettings.json: catalog-api 65448, orders-api 65447)
+curl -X POST http://localhost:65448/_ops/runtime -H "Content-Type: application/json" \
      -d '{"kind":"Errors","probability":0.6,"errorMessage":"..."}'
-curl -X DELETE https://localhost:<catalog-port>/chaos
+curl -X DELETE http://localhost:65448/_ops/runtime
 
 # Phase 1 CLI (needs `az login` and a Foundry project with a model deployment)
 cd src/Responder/IncidentResponder.Cli

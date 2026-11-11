@@ -14,7 +14,7 @@
   <Folder Name="/src/Lab/">
     <Project Path="src/Lab/IncidentLab.AppHost/IncidentLab.AppHost.csproj" />
     <Project Path="src/Lab/IncidentLab.ServiceDefaults/IncidentLab.ServiceDefaults.csproj" />
-    <Project Path="src/Lab/IncidentLab.Chaos/IncidentLab.Chaos.csproj" />
+    <Project Path="src/Lab/IncidentLab.Platform/IncidentLab.Platform.csproj" />
     <Project Path="src/Lab/IncidentLab.CatalogApi/IncidentLab.CatalogApi.csproj" />
     <Project Path="src/Lab/IncidentLab.OrdersApi/IncidentLab.OrdersApi.csproj" />
     <Project Path="src/Lab/IncidentLab.LoadGen/IncidentLab.LoadGen.csproj" />

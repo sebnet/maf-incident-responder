@@ -1,15 +1,15 @@
-using IncidentLab.Chaos;
+using IncidentLab.Platform;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-builder.Services.AddChaos();
+builder.Services.AddRuntimeOverrides();
 
 var app = builder.Build();
 
-app.UseChaos();
+app.UseRuntimeOverrides();
 app.MapDefaultEndpoints();
-app.MapChaosEndpoints();
+app.MapRuntimeOverrideEndpoints();
 
 // TODO(F0): move the catalog to Redis (cache) or Postgres so infrastructure faults become possible.
 CatalogItem[] items =

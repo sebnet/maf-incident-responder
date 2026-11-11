@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\IncidentLab.ServiceDefaults\IncidentLab.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\IncidentLab.Chaos\IncidentLab.Chaos.csproj" />
+    <ProjectReference Include="..\IncidentLab.Platform\IncidentLab.Platform.csproj" />
   </ItemGroup>
 
 </Project>

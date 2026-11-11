@@ -8,7 +8,7 @@ answer. That is what makes this project's evaluation objective.
 | Field | Meaning |
 |---|---|
 | `status` | `ready` or `planned` (the runner skips `planned`) |
-| `inject.target` / `inject.fault` | Body sent to `POST /chaos` on the target service |
+| `inject.target` / `inject.fault` | Body sent to `POST /_ops/runtime` on the target service |
 | `warmupSeconds` | How long to let traffic flow with the fault before asking the agent |
 | `alert` | What the agent is told (it is NOT told the target) |
 | `expected` | Ground truth: `rootCauseService`, `category`, `mustMention` |
@@ -19,11 +19,11 @@ answer. That is what makes this project's evaluation objective.
 
 `evals/IncidentResponder.Evals` (console app, to be created) does, per scenario and per repetition:
 
-1. `DELETE /chaos` on every service (clean state), wait for metrics to settle.
-2. `POST /chaos` on `inject.target` with `inject.fault`.
+1. `DELETE /_ops/runtime` on every service (clean state), wait for metrics to settle.
+2. `POST /_ops/runtime` on `inject.target` with `inject.fault`.
 3. Wait `warmupSeconds` (the LoadGen keeps traffic flowing).
 4. Run the responder with the `alert` and get a structured `Diagnosis` (`RunAsync<Diagnosis>`).
-5. `DELETE /chaos`.
+5. `DELETE /_ops/runtime`.
 6. Score and write a JSON line to `evals/runs/<date>-<phase>.jsonl` (git-ignored).
 
 Run each scenario **at least 3 times**: the model is not deterministic, so a single run says little.

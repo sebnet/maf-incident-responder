@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
     subgraph Lab["Lab (Phase 0) — the victim"]
-        chaos[Chaos control<br/>/chaos on each service]
+        chaos[Fault injection control<br/>/_ops/runtime on each service]
         loadgen[LoadGen] --> orders[orders-api]
         orders --> catalog[catalog-api]
         orders -.-> pg[(Postgres)]
@@ -37,7 +37,7 @@ flowchart LR
     evals -- alert --> agent
 ```
 
-The eval runner is the only component allowed to read or change `/chaos` to set up a scenario. The responder
+The eval runner is the only component allowed to read or change `/_ops/runtime` to set up a scenario. The responder
 may only call the lab's remediation actions *after approval* (Phase 3+), and never reads the active fault.
 
 ## Layers (Clean Architecture, pragmatic)

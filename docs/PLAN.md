@@ -34,7 +34,7 @@ Tasks
 - [x] Verify the Loki/Prometheus/Tempo HTTP APIs are reachable from the host (ports 3100/9090/3200), or switch
       to Grafana's datasource proxy. Record which labels exist (`service_name`? `detected_level`?) in
       `docs/notes/lgtm-labels.md`.
-- [x] Inject s01 by hand (`POST /chaos` on catalog-api): see the orders-api error rate rise in Grafana and the
+- [x] Inject s01 by hand (`POST /_ops/runtime` on catalog-api; was `/chaos`): see the orders-api error rate rise in Grafana and the
       500s in Tempo traces crossing both services.
 - [x] Inject s02 by hand: see p95 latency rise with no errors.
 - [ ] Move orders-api to Postgres (Aspire.Npgsql + `ordersdb`) so s03 can become a real connection-pool problem.

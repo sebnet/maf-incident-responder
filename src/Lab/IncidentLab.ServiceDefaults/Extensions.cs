@@ -18,10 +18,18 @@ public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
-    private const string ChaosEndpointPath = "/chaos";
+    private const string OpsEndpointPath = "/_ops"; // lab control endpoints (IncidentLab.Platform)
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        // Framework request/HTTP-client chatter only at Warning and above. Without this, every request writes about
+        // 5 Information lines (about 1,400 lines/min for orders-api), which buries the signal the responder needs, and the
+        // request logs would also show calls to the control endpoints. Unhandled exceptions are logged at Error by
+        // Microsoft.AspNetCore.Diagnostics, so they still get through. App logs (e.g. "Order created") are unaffected.
+        builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+        builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+        builder.Logging.AddFilter("Polly", LogLevel.Warning);
+
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();
 
@@ -53,8 +61,8 @@ public static class Extensions
             .WithTracing(tracing => tracing
                 .AddSource(builder.Environment.ApplicationName)
                 .AddAspNetCoreInstrumentation(options =>
-                    // Health checks and the chaos control plane never show up in traces.
-                    // The responder must diagnose from symptoms, not by reading the chaos API calls.
+                    // Health checks and the lab control endpoints (fault injection) never show up in traces.
+                    // The responder must diagnose from symptoms, not by reading the control API calls.
                     options.Filter = context => !IsInfrastructurePath(context.Request.Path))
                 .AddHttpClientInstrumentation());
 
@@ -89,5 +97,5 @@ public static class Extensions
     private static bool IsInfrastructurePath(PathString path) =>
         path.StartsWithSegments(HealthEndpointPath)
         || path.StartsWithSegments(AlivenessEndpointPath)
-        || path.StartsWithSegments(ChaosEndpointPath);
+        || path.StartsWithSegments(OpsEndpointPath);
 }
