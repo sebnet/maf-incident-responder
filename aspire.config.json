@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/Lab/IncidentLab.AppHost/IncidentLab.AppHost.csproj"
+  }
+}
