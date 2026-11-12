@@ -19,7 +19,13 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Responder\IncidentResponder.Core\IncidentResponder.Core.csproj" />
     <ProjectReference Include="..\..\src\Responder\IncidentResponder.Agents\IncidentResponder.Agents.csproj" />
+    <ProjectReference Include="..\..\src\Responder\IncidentResponder.Telemetry\IncidentResponder.Telemetry.csproj" />
     <ProjectReference Include="..\..\src\Lab\IncidentLab.Platform\IncidentLab.Platform.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Responses recorded from the real LGTM during s01 (local paths in stack traces sanitized). -->
+    <None Include="Fixtures\**\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
