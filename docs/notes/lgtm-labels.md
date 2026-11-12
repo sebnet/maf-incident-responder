@@ -112,7 +112,10 @@ Baseline with no fault: about 3.8 req/s on both APIs, p95 about 5 ms, no 5xx.
 OTLP to LGTM (~1.9 req/s of 200s from orders-api). `server_address` is `localhost` for both, and the ports are
 dynamic (Aspire), so neither identifies the dependency by name. A tool must not report "outbound calls" as a
 plain sum: group by `server_port` and drop the OTLP series, or rely on the Polly log `Uri` / Tempo spans for the
-dependency name. TODO(F1): decide how the metrics tool tells them apart.
+dependency name.
+
+Decision (Phase 1): the metrics tool only uses `http_server_*` (inbound, per service). Dependencies are named by
+the log tool (Polly `Uri`) and the trace tool (client spans are labelled with the service of their child span).
 
 During s01 (60 % errors on catalog-api, verified 2026-11-12):
 
@@ -150,6 +153,21 @@ A typical trace: `loadgen POST` → `orders-api POST /orders` → `orders-api GE
 `catalog-api GET /items/{id:int}`, plus an `orders-api` `postgresql` span (scope `Npgsql`) with `db.query.text`,
 `db.namespace` = `ordersdb`. The root is `loadgen`, so search by `resource.service.name` for the span you
 care about, not by `rootServiceName`.
+
+## Response shapes (what `LgtmTelemetryQuery` parses, verified 2026-11-12)
+
+- **Loki `query_range`**: without the `X-Loki-Response-Encoding-Flags: categorize-labels` header, structured
+  metadata is merged into `stream`, so practically **every line is its own stream** (unique `trace_id`). Values
+  are `["<unix ns>", "<rendered line>"]`.
+- The rendered line of an unhandled exception is just *"An unhandled exception has occurred while executing the
+  request."*: what matters is `exception_type` + `exception_message` (both present; `exception_stacktrace` too,
+  but it is large and carries local file paths, so the tool leaves it out).
+- **Prometheus `query_range`**: values are `[<unix s>, "<number>"]`; numbers can be `NaN`, `+Inf`, `-Inf`
+  (.NET's `double.Parse` rejects `+Inf`).
+- **Tempo `/api/traces/{id}`**: `{ "batches": [ { resource, scopeSpans: [ { scope, spans } ] } ] }`. Span and
+  parent ids are **base64**, not hex. `status` is `{ "code": "STATUS_CODE_ERROR" }` with **no message**: the
+  error detail is in `error.type` (exception type on server spans, the status code on client spans) and
+  `http.response.status_code`. Client spans are named just `GET`/`POST`. Unknown trace → 404, empty body.
 
 ## Gotchas
 

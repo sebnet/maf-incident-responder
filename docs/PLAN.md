@@ -67,9 +67,9 @@ Samples
 - `02-agents/Agents/Agent_Step13_ChatReduction`, `Agent_Step18_CompactionPipeline` (read; apply if context grows)
 
 Tasks
-- [ ] Implement `LgtmTelemetryQuery.QueryLogsAsync` (Loki) + tests with recorded payloads.
-- [ ] Implement `QueryMetricAsync` (Prometheus) + tests.
-- [ ] Implement `GetTraceAsync` (Tempo) + tests.
+- [x] Implement `LgtmTelemetryQuery.QueryLogsAsync` (Loki) + tests with recorded payloads.
+- [x] Implement `QueryMetricAsync` (Prometheus) + tests.
+- [x] Implement `GetTraceAsync` (Tempo) + tests.
 - [ ] Run the CLI against the lab with s01 active. Iterate on tool outputs until they are compact and useful.
 - [ ] Structured output: produce a `Diagnosis` with `RunAsync<Diagnosis>` (add a `/diagnose <service>` command
       or a separate method used by the eval runner).
