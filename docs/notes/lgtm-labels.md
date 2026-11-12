@@ -48,6 +48,25 @@ Useful structured metadata per line:
 
 The log line itself is the rendered message.
 
+Exceptions: logs that carry one have `exception_type` with the **short** type name (`HttpRequestException`, not
+`System.Net.Http.HttpRequestException`). Lines without an exception have no such field, so a `sum by
+(exception_type)` returns an extra series with empty labels.
+
+Polly (standard resilience handler) logs every failed attempt; the **last** one, when retries give up, at Error
+level with no exception attached:
+
+| Field | Example |
+|---|---|
+| `_OriginalFormat_` | `Execution attempt. Source: '{PipelineName}/...', ... Result: '{Result}', ... Attempt: '{Attempt}' ...` |
+| `scope_name` | `Polly` |
+| `StrategyName` | `Standard-Retry` |
+| `Result`, `Attempt`, `Handled` | `500`, `3`, `true` |
+| `Uri` | `https+http://catalog-api/items/1` (the logical, service-discovery name of the dependency) |
+
+During s01 (verified 2026-11-12) orders-api error logs are exactly two templates in equal numbers: the
+unhandled-exception line (`DeveloperExceptionPageMiddleware`, `exception_type` = `HttpRequestException`) and this
+Polly line. Its `Uri` names the failing dependency: worth surfacing in the log tool's summary.
+
 Volume: `Microsoft.AspNetCore`, `System.Net.Http.HttpClient`, `Polly` and `Npgsql` log at Warning and above (ServiceDefaults).
 Before that, orders-api wrote about 1,400 `info` lines per minute; now it writes about 12 (its own "Order created" lines). During s01 the
 logs are mostly unhandled-exception errors and Polly retry warnings: signal, not noise. Log tools must still
@@ -63,7 +82,7 @@ Most relevant for the scenarios:
 | Metric | Labels | Used for |
 |---|---|---|
 | `http_server_request_duration_seconds_{bucket,count,sum}` | `http_route`, `http_request_method`, `http_response_status_code` | inbound error rate, p95 |
-| `http_client_request_duration_seconds_{bucket,count,sum}` | `server_address`, `server_port`, `http_response_status_code` | outbound calls (orders → catalog) |
+| `http_client_request_duration_seconds_{bucket,count,sum}` | `server_address`, `server_port`, `http_response_status_code`, `error_type` | outbound calls (orders → catalog) — **includes the OTLP exporter**, see below |
 | `http_server_active_requests`, `kestrel_queued_connections` | — | saturation |
 | `dotnet_thread_pool_queue_length`, `dotnet_gc_*`, `dotnet_exceptions_total` | — | runtime health |
 | `db_client_connection_count` | `db_client_connection_state` (`idle`/`used`), `db_client_connection_pool_name` | Postgres pool usage (orders-api) |
@@ -88,6 +107,26 @@ histogram_quantile(0.95, sum by (le, service_name) (rate(http_server_request_dur
 ```
 
 Baseline with no fault: about 3.8 req/s on both APIs, p95 about 5 ms, no 5xx.
+
+`http_client_*` counts **every** HttpClient call of the service, including the OpenTelemetry exporter sending
+OTLP to LGTM (~1.9 req/s of 200s from orders-api). `server_address` is `localhost` for both, and the ports are
+dynamic (Aspire), so neither identifies the dependency by name. A tool must not report "outbound calls" as a
+plain sum: group by `server_port` and drop the OTLP series, or rely on the Polly log `Uri` / Tempo spans for the
+dependency name. TODO(F1): decide how the metrics tool tells them apart.
+
+During s01 (60 % errors on catalog-api, verified 2026-11-12):
+
+| | catalog-api | orders-api |
+|---|---|---|
+| 5xx rate (5 min) | 0.61 | 0.12 |
+| req/s | ~0.68 | ~0.35 |
+| p95 | 33 ms | 10 s |
+
+- Traffic collapses from 3.8 to ~0.35 req/s: the LoadGen sends one request at a time, and each failing order
+  waits through the retries. That keeps catalog-api at ~18 calls per 30 s (max 34), far below the circuit
+  breaker's minimum throughput of 100, so **the breaker never opens** and there is no `BrokenCircuitException`.
+- orders-api also returns **499** on `/orders` (about twice as many as 500s): the LoadGen's own 10 s attempt
+  timeout cancels slow requests. The usual error-rate query (`5..`) does not count them.
 `/health` and `/alive` do not appear in `http_route` (filtered in ServiceDefaults, as intended).
 
 ## Tempo (traces)
