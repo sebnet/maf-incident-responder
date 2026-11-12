@@ -9,13 +9,21 @@ with a 500 of its own. So the alert fires on **orders-api**, but orders-api is u
 ## Signals
 
 - Alert: orders-api error rate > 5%.
-- orders-api logs: unhandled `HttpRequestException` ("Response status code does not indicate success: 500")
-  from `CatalogClient`, plus Polly retry warnings. Few or no database errors.
-- If catalog-api fails hard enough, the circuit breaker in orders-api opens (>10% failures over 30 s, then
-  open for 5 s). While open, orders-api fails instantly with `BrokenCircuitException` and **never calls
-  catalog-api**: those traces have no catalog-api span. Same incident, different message — don't treat it as a
-  second problem.
-- catalog-api has its own 5xx at the same time (often a higher rate than orders-api, because retries hide part of it).
+- orders-api logs, roughly one pair per failed order:
+  - unhandled `HttpRequestException` ("Response status code does not indicate success: 500") from `CatalogClient`;
+  - a Polly error "Execution attempt ... Result: '500' ... Attempt: '3'" (the last retry giving up). Its `Uri`
+    field is the catalog-api URL — the quickest pointer to the dependency.
+  Few or no database errors.
+- orders-api latency goes up too (p95 of several seconds): failed orders wait through the retries and their
+  backoff. Callers with shorter timeouts give up first, so you also see 499s on `/orders`. Don't open a
+  separate latency incident.
+- catalog-api has its own 5xx at the same time (often a much higher rate than orders-api, because retries hide
+  most of it).
+- Circuit breaker: in theory it opens at >10% failures over 30 s, but only with **at least 100 calls in that
+  window**. At our usual traffic, and with the retries slowing everything down, it normally stays closed: expect
+  the `HttpRequestException` above, not `BrokenCircuitException`. If it does open (traffic spike), orders-api
+  fails instantly with `BrokenCircuitException` and **never calls catalog-api**: those traces have no
+  catalog-api span. Same incident, different message — don't treat it as a second problem.
 - Traces: the failing span is the `catalog-api GET /items/{id:int}` child, with an exception event.
 
 ## How to confirm
@@ -26,7 +34,9 @@ with a 500 of its own. So the alert fires on **orders-api**, but orders-api is u
      / sum by (service_name) (rate(http_server_request_duration_seconds_count[5m]))
    ```
 2. Check orders-api outbound calls to catalog-api (`http_client_request_duration_seconds_count` by
-   `server_address`, `http_response_status_code`). 500s here = it's the dependency.
+   `server_address`, `server_port`, `http_response_status_code`). 500s here = it's the dependency. Careful: this
+   metric also counts the telemetry exporter's own calls (a steady series of 200s to another port). Ignore it,
+   or the outbound traffic looks much healthier than it is.
 3. Open one failing trace in Tempo (`{ resource.service.name = "catalog-api" && status = error }`) and read the
    exception message on the catalog-api span. That message is what you put in the incident channel.
 4. Group catalog-api error logs by message template. One dominant message = one cause.
