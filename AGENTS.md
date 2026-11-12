@@ -179,7 +179,7 @@ blog draft in `blog/`.
 
 \* ~15 h/week.
 
-**Current phase:** 0 — see `docs/PLAN.md` for the next unchecked task.
+**Current phase:** 1 — see `docs/PLAN.md` for the next unchecked task.
 
 ## 8. Commands
 
@@ -230,8 +230,3 @@ dotnet run
 - The eval runner must print token usage and estimated cost per run.
 - Remediation actions in the lab only affect the lab (restart a container, clear a fault). Never point the
   responder at anything real.
-
-## 12. Open verification items (Phase 0)
-
-Remove this section once Phase 0 is done.
-- `LgtmTelemetryQuery` is a stub (`NotImplementedException`) — implemented in Phase 1.
