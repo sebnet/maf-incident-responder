@@ -19,7 +19,7 @@
   },
   "expected": {
     "rootCauseService": "catalog-api",
-    "category": "DependencyFailure",
+    "category": "ApplicationError",
     "mustMention": ["catalog-api"]
   }
 }
