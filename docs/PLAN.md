@@ -70,7 +70,10 @@ Tasks
 - [x] Implement `LgtmTelemetryQuery.QueryLogsAsync` (Loki) + tests with recorded payloads.
 - [x] Implement `QueryMetricAsync` (Prometheus) + tests.
 - [x] Implement `GetTraceAsync` (Tempo) + tests.
-- [ ] Run the CLI against the lab with s01 active. Iterate on tool outputs until they are compact and useful.
+- [x] Run the CLI against the lab with s01 active. Iterate on tool outputs until they are compact and useful.
+      *(3 runs, all correct service. Fix: Polly log rewritten, the model was inventing a circuit breaker.
+      Open: category is free text and doesn't fit the enum → decide in the structured output task. s02 not tried
+      by hand yet: first look will be the baseline.)*
 - [ ] Structured output: produce a `Diagnosis` with `RunAsync<Diagnosis>` (add a `/diagnose <service>` command
       or a separate method used by the eval runner).
 - [ ] Middleware: tool-call budget per run; log result sizes; warn on large outputs.
