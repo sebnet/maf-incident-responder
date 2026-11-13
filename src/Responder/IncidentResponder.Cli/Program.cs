@@ -1,3 +1,4 @@
+using System.Text.Json;
 using IncidentResponder.Agents;
 using IncidentResponder.Core;
 using IncidentResponder.Telemetry;
@@ -40,7 +41,11 @@ using var host = builder.Build();
 var agent = host.Services.GetRequiredService<AIAgent>();
 AgentSession session = await agent.CreateSessionAsync();
 
-Console.WriteLine($"{OnCallAssistant.Name} ({model}). Ask e.g. \"what's wrong with orders-api?\". Empty line to exit, /new for a new session.");
+var time = host.Services.GetRequiredService<TimeProvider>();
+var json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
+
+Console.WriteLine($"{OnCallAssistant.Name} ({model}). Ask e.g. \"what's wrong with orders-api?\". Empty line to exit.");
+Console.WriteLine("Commands: /new (new chat session), /diagnose <service> (structured diagnosis, always a fresh session).");
 while (true)
 {
     Console.Write("\n> ");
@@ -54,6 +59,22 @@ while (true)
     {
         session = await agent.CreateSessionAsync();
         Console.WriteLine("(new session)");
+        continue;
+    }
+
+    if (input.StartsWith("/diagnose", StringComparison.OrdinalIgnoreCase))
+    {
+        var service = input["/diagnose".Length..].Trim();
+        if (service.Length == 0)
+        {
+            Console.WriteLine("Usage: /diagnose <service>, e.g. /diagnose orders-api");
+            continue;
+        }
+
+        // A manual alert: the eval runner will pass the scenario's real one instead.
+        var alert = new Alert(service, "manual", $"Manual diagnosis requested for {service}.", time.GetUtcNow());
+        var diagnosis = await OnCallAssistant.DiagnoseAsync(agent, alert);
+        Console.WriteLine(JsonSerializer.Serialize(diagnosis, json));
         continue;
     }
 

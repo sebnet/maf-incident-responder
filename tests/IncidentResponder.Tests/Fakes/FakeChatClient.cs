@@ -15,6 +15,9 @@ public sealed class FakeChatClient : IChatClient
 
     public List<IReadOnlyList<ChatMessage>> Requests { get; } = [];
 
+    /// <summary>The options of each request, same order as <see cref="Requests"/> (e.g. to check ResponseFormat).</summary>
+    public List<ChatOptions?> Options { get; } = [];
+
     public FakeChatClient EnqueueText(string text) =>
         Enqueue(new ChatResponse(new ChatMessage(ChatRole.Assistant, text)));
 
@@ -30,6 +33,7 @@ public sealed class FakeChatClient : IChatClient
     public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
         Requests.Add([.. messages]);
+        Options.Add(options);
         return _responses.Count > 0
             ? Task.FromResult(_responses.Dequeue())
             : throw new InvalidOperationException("FakeChatClient: no scripted response left. The agent called the model more times than the test expected.");

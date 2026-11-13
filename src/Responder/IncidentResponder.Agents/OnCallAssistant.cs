@@ -1,3 +1,4 @@
+using IncidentResponder.Core;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
@@ -30,6 +31,34 @@ public static class OnCallAssistant
         your confidence (0-1), the evidence (source + one-line summary each) and suggested actions.
         You can only read telemetry. You cannot change anything in the system.
         """;
+
+    /// <summary>
+    /// The user message for a diagnosis. Part of the prompt: changes here are prompt changes (AGENTS.md §6.8).
+    /// </summary>
+    public static string DiagnoseRequest(Alert alert)
+    {
+        ArgumentNullException.ThrowIfNull(alert);
+        return $"""
+            Alert fired at {alert.FiredAt.UtcDateTime:yyyy-MM-dd HH:mm:ss} UTC on {alert.Service} (signal: {alert.Signal}):
+            {alert.Description}
+            Investigate it with the tools and return your diagnosis.
+            """;
+    }
+
+    /// <summary>
+    /// Investigates an alert and returns a typed <see cref="Diagnosis"/> (structured output).
+    /// Used by the CLI's /diagnose command and, later, by the eval runner.
+    /// Always starts a fresh session: a diagnosis must not depend on earlier chat, so runs are comparable.
+    /// </summary>
+    public static async Task<Diagnosis> DiagnoseAsync(AIAgent agent, Alert alert, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(agent);
+        ArgumentNullException.ThrowIfNull(alert);
+
+        AgentSession agentSession = await agent.CreateSessionAsync(cancellationToken);
+        var agentResponse = await agent.RunAsync<Diagnosis>(DiagnoseRequest(alert), agentSession, cancellationToken: cancellationToken);
+        return agentResponse.Result;
+    }
 
     public static AIAgent Create(IChatClient chatClient, TelemetryTools tools, ToolCallMiddleware toolMiddleware)
     {
