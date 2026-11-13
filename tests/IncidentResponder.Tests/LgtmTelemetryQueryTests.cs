@@ -78,6 +78,46 @@ public sealed class LgtmTelemetryQueryTests
     }
 
     [Fact]
+    public async Task Circuit_breaker_openings_are_described_in_plain_words()
+    {
+        // Three OnCircuitOpened events recorded during s01 runs on 2026-11-13.
+        var telemetry = Create(FakeHttpMessageHandler.FromFixture("loki-orders-api-circuit-opened-s01.json"));
+
+        var summary = await telemetry.QueryLogsAsync(new LogQuery("orders-api", S01Window), Ct);
+
+        var group = Assert.Single(summary.TopGroups);
+        Assert.Equal(3, group.Count);
+        Assert.Equal(
+            "circuit breaker opened for calls to https+http://catalog-api/items/{n}: calls now fail immediately without being sent (last result: 500) | request: /orders",
+            group.Message);
+    }
+
+    [Fact]
+    public async Task Different_resilience_events_are_never_merged_into_one_group()
+    {
+        const string Template = "Resilience event occurred. EventName: '{EventName}', Source: '{PipelineName}/{PipelineInstance}/{StrategyName}', Operation Key: '{OperationKey}', Result: '{Result}'";
+        const string Body = $$$"""
+            {"status":"success","data":{"resultType":"streams","result":[
+              {"stream":{"scope_name":"Polly","detected_level":"warn","_OriginalFormat_":"{{{Template}}}","EventName":"OnCircuitHalfOpened","Result":""},
+               "values":[["1794488600000000000","Resilience event occurred. EventName: 'OnCircuitHalfOpened', ..."]]},
+              {"stream":{"scope_name":"Polly","detected_level":"warn","_OriginalFormat_":"{{{Template}}}","EventName":"OnCircuitClosed","Result":""},
+               "values":[["1794488700000000000","Resilience event occurred. EventName: 'OnCircuitClosed', ..."]]}
+            ]}}
+            """;
+        var telemetry = Create(new FakeHttpMessageHandler(HttpStatusCode.OK, Body));
+
+        var summary = await telemetry.QueryLogsAsync(new LogQuery("orders-api", S01Window, MinLevel: "warn"), Ct);
+
+        // Same template and level: only EventName tells them apart. No Uri: the text says "outgoing calls".
+        Assert.Equal(
+            [
+                "circuit breaker closed for outgoing calls: calls are sent normally again",
+                "circuit breaker half-open for outgoing calls: letting a trial call through",
+            ],
+            summary.TopGroups.Select(g => g.Message));
+    }
+
+    [Fact]
     public async Task Polly_attempts_that_will_be_retried_are_described_as_such()
     {
         const string Body = """

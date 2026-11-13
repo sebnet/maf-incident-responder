@@ -82,6 +82,7 @@ internal static partial class LokiLogs
     private static string GroupKey(Entry e) => string.Join('\u001f',
         e.Labels.GetValueOrDefault("detected_level") ?? string.Empty,
         e.Labels.GetValueOrDefault("_OriginalFormat_") ?? Normalize(e.Line),
+        e.Labels.GetValueOrDefault("EventName") ?? string.Empty, // Polly: one template for every resilience event
         e.Labels.GetValueOrDefault("exception_type") ?? string.Empty,
         Normalize(e.Labels.GetValueOrDefault("exception_message")),
         Normalize(e.Labels.GetValueOrDefault("RequestPath")),
@@ -94,7 +95,7 @@ internal static partial class LokiLogs
     /// </summary>
     private static string Describe(Entry e)
     {
-        if (DescribePollyAttempt(e) is { } polly)
+        if ((DescribePollyEvent(e) ?? DescribePollyAttempt(e)) is { } polly)
         {
             return polly;
         }
@@ -137,6 +138,32 @@ internal static partial class LokiLogs
         var text = e.Labels.GetValueOrDefault("detected_level") is "error" or "critical" or "fatal"
             ? $"outgoing call failed, retries exhausted: {call} after {attempt + 1} attempts"
             : $"outgoing call failed, will retry: {call} (attempt {attempt + 1})";
+
+        return e.Labels.TryGetValue("RequestPath", out var path) ? $"{text} | request: {Normalize(path)}" : text;
+    }
+
+    /// <summary>
+    /// Polly's resilience events ("Resilience event occurred. EventName: 'OnCircuitOpened', Source:
+    /// '-standard//Standard-CircuitBreaker' ...") rewritten in plain words, same reason as the retry line.
+    /// OnCircuitOpened is logged at Error, OnCircuitHalfOpened at Warning (observed in s01).
+    /// </summary>
+    private static string? DescribePollyEvent(Entry e)
+    {
+        if (e.Labels.GetValueOrDefault("scope_name") != "Polly" || !e.Labels.TryGetValue("EventName", out var eventName))
+        {
+            return null;
+        }
+
+        var target = e.Labels.TryGetValue("Uri", out var uri) ? $"calls to {Normalize(uri)}" : "outgoing calls";
+        var result = e.Labels.GetValueOrDefault("Result") is { Length: > 0 } r ? r : null;
+        var text = eventName switch
+        {
+            "OnCircuitOpened" => $"circuit breaker opened for {target}: calls now fail immediately without being sent"
+                                 + (result is null ? string.Empty : $" (last result: {result})"),
+            "OnCircuitHalfOpened" => $"circuit breaker half-open for {target}: letting a trial call through",
+            "OnCircuitClosed" => $"circuit breaker closed for {target}: calls are sent normally again",
+            _ => $"resilience event {eventName} on {target}" + (result is null ? string.Empty : $" (result: {result})"),
+        };
 
         return e.Labels.TryGetValue("RequestPath", out var path) ? $"{text} | request: {Normalize(path)}" : text;
     }
