@@ -54,8 +54,46 @@ public sealed class LgtmTelemetryQueryTests
         Assert.DoesNotContain("   at ", exception.Message, StringComparison.Ordinal);
 
         // Polly's line is the one that names the dependency; item ids are normalized so all retries group together.
-        var retry = Assert.Single(summary.TopGroups, g => g.Message.StartsWith("Execution attempt.", StringComparison.Ordinal));
-        Assert.Contains("dependency: https+http://catalog-api/items/{n}", retry.Message, StringComparison.Ordinal);
+        // Attempt '3' is 0-based: the s01 trace (tempo-trace-s01.json) has exactly 4 calls to catalog-api.
+        var retry = Assert.Single(summary.TopGroups, g => g.Message.StartsWith("outgoing call", StringComparison.Ordinal));
+        Assert.Equal(
+            "outgoing call failed, retries exhausted: GET https+http://catalog-api/items/{n} -> 500 after 4 attempts | request: /orders",
+            retry.Message);
+    }
+
+    [Fact]
+    public async Task Polly_jargon_never_reaches_the_model()
+    {
+        // In Phase 1 runs the model read "Source: '-standard//Standard-Retry', Handled: 'True'" as a circuit breaker
+        // opening, which never happens in s01.
+        var telemetry = Create(FakeHttpMessageHandler.FromFixture("loki-orders-api-errors-s01.json"));
+
+        var summary = await telemetry.QueryLogsAsync(new LogQuery("orders-api", S01Window), Ct);
+
+        Assert.All(summary.TopGroups, g =>
+        {
+            Assert.DoesNotContain("Execution attempt", g.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("Standard-Retry", g.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("Handled", g.Message, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task Polly_attempts_that_will_be_retried_are_described_as_such()
+    {
+        const string Body = """
+            {"status":"success","data":{"resultType":"streams","result":[
+              {"stream":{"scope_name":"Polly","detected_level":"warn","_OriginalFormat_":"Execution attempt. ...","HttpMethod":"GET","Uri":"https+http://catalog-api/items/7","Result":"500","Attempt":"0","RequestPath":"/orders"},
+               "values":[["1794488600000000000","Execution attempt. Source: '-standard//Standard-Retry', Result: '500', Handled: 'True', Attempt: '0'"]]}
+            ]}}
+            """;
+        var telemetry = Create(new FakeHttpMessageHandler(HttpStatusCode.OK, Body));
+
+        var summary = await telemetry.QueryLogsAsync(new LogQuery("orders-api", S01Window, MinLevel: "warn"), Ct);
+
+        Assert.Equal(
+            "outgoing call failed, will retry: GET https+http://catalog-api/items/{n} -> 500 (attempt 1) | request: /orders",
+            Assert.Single(summary.TopGroups).Message);
     }
 
     [Fact]

@@ -80,6 +80,7 @@ internal static partial class LokiLogs
     /// error". Ids and numbers are normalized so /items/3 and /items/4 land in one group.
     /// </summary>
     private static string GroupKey(Entry e) => string.Join('\u001f',
+        e.Labels.GetValueOrDefault("detected_level") ?? string.Empty,
         e.Labels.GetValueOrDefault("_OriginalFormat_") ?? Normalize(e.Line),
         e.Labels.GetValueOrDefault("exception_type") ?? string.Empty,
         Normalize(e.Labels.GetValueOrDefault("exception_message")),
@@ -93,6 +94,11 @@ internal static partial class LokiLogs
     /// </summary>
     private static string Describe(Entry e)
     {
+        if (DescribePollyAttempt(e) is { } polly)
+        {
+            return polly;
+        }
+
         var parts = new List<string> { Truncate(e.Line) };
         if (e.Labels.TryGetValue("exception_type", out var exType))
         {
@@ -110,6 +116,29 @@ internal static partial class LokiLogs
         }
 
         return string.Join(" | ", parts);
+    }
+
+    /// <summary>
+    /// Polly's own line ("Execution attempt. Source: '-standard//Standard-Retry', Handled: 'True', Attempt: '3'...")
+    /// is library jargon: in Phase 1 runs the model read it as "the circuit breaker opened", which never happens in
+    /// s01. So the line is rewritten from its structured fields into plain words. Polly logs the attempt that gives
+    /// up at Error and the ones it will retry at Warning; <c>Attempt</c> is 0-based.
+    /// </summary>
+    private static string? DescribePollyAttempt(Entry e)
+    {
+        if (e.Labels.GetValueOrDefault("scope_name") != "Polly"
+            || !e.Labels.TryGetValue("Uri", out var uri)
+            || !int.TryParse(e.Labels.GetValueOrDefault("Attempt"), System.Globalization.CultureInfo.InvariantCulture, out var attempt))
+        {
+            return null;
+        }
+
+        var call = $"{e.Labels.GetValueOrDefault("HttpMethod") ?? "call"} {Normalize(uri)} -> {e.Labels.GetValueOrDefault("Result") ?? "failed"}";
+        var text = e.Labels.GetValueOrDefault("detected_level") is "error" or "critical" or "fatal"
+            ? $"outgoing call failed, retries exhausted: {call} after {attempt + 1} attempts"
+            : $"outgoing call failed, will retry: {call} (attempt {attempt + 1})";
+
+        return e.Labels.TryGetValue("RequestPath", out var path) ? $"{text} | request: {Normalize(path)}" : text;
     }
 
     private static int LevelIndex(string minLevel)
