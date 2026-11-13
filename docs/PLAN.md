@@ -76,7 +76,7 @@ Tasks
       see docs/notes/lgtm-labels.md, so that was probably not a hallucination.
       Open: category is free text and doesn't fit the enum → decide in the structured output task. s02 not tried
       by hand yet: first look will be the baseline.)*
-- [ ] Structured output: produce a `Diagnosis` with `RunAsync<Diagnosis>` (add a `/diagnose <service>` command
+- [x] Structured output: produce a `Diagnosis` with `RunAsync<Diagnosis>` (add a `/diagnose <service>` command
       or a separate method used by the eval runner).
 - [ ] Middleware: tool-call budget per run; log result sizes; warn on large outputs.
 - [ ] Agent OpenTelemetry: wrap the agent with OTel (see `Agent_Step05_Observability`) and send it to LGTM too.
