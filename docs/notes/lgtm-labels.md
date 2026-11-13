@@ -126,8 +126,16 @@ During s01 (60 % errors on catalog-api, verified 2026-11-12):
 | p95 | 33 ms | 10 s |
 
 - Traffic collapses from 3.8 to ~0.35 req/s: the LoadGen sends one request at a time, and each failing order
-  waits through the retries. That keeps catalog-api at ~18 calls per 30 s (max 34), far below the circuit
-  breaker's minimum throughput of 100, so **the breaker never opens** and there is no `BrokenCircuitException`.
+  waits through the retries. That keeps catalog-api at ~18 calls per 30 s (max 34), below the circuit breaker's
+  minimum throughput of 100.
+- **Correction (2026-11-13): the breaker does open, intermittently.** Despite the numbers above, Loki has 27
+  `OnCircuitOpened` / `OnCircuitHalfOpened` events in orders-api over ~30 h of s01 runs (Nov 12 from 16:25 and all
+  of Nov 13), every 20–60 min while the fault is active. While open, orders-api logs
+  `BrokenCircuitException: The circuit is now open and is not allowing calls.` and a Polly line
+  `Resilience event occurred. EventName: 'OnCircuitOpened', Source: '-standard//Standard-CircuitBreaker' ...`.
+  The short 13:04–13:11 window of the fixtures happened to have none, which is where "never opens" came from.
+  Why it opens at this traffic is not investigated (likely bursts above the threshold); what matters for the
+  responder is that a diagnosis mentioning the breaker during s01 can be correct.
 - orders-api also returns **499** on `/orders` (about twice as many as 500s): the LoadGen's own 10 s attempt
   timeout cancels slow requests. The usual error-rate query (`5..`) does not count them.
 `/health` and `/alive` do not appear in `http_route` (filtered in ServiceDefaults, as intended).

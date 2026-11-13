@@ -19,11 +19,12 @@ with a 500 of its own. So the alert fires on **orders-api**, but orders-api is u
   separate latency incident.
 - catalog-api has its own 5xx at the same time (often a much higher rate than orders-api, because retries hide
   most of it).
-- Circuit breaker: in theory it opens at >10% failures over 30 s, but only with **at least 100 calls in that
-  window**. At our usual traffic, and with the retries slowing everything down, it normally stays closed: expect
-  the `HttpRequestException` above, not `BrokenCircuitException`. If it does open (traffic spike), orders-api
-  fails instantly with `BrokenCircuitException` and **never calls catalog-api**: those traces have no
-  catalog-api span. Same incident, different message — don't treat it as a second problem.
+- Circuit breaker: it opens at >10% failures over 30 s, with at least 100 calls in that window. Our usual
+  traffic is below that most of the time, but when the incident lasts it **does open now and then** (seen every
+  20–60 min): a Polly "Resilience event ... 'OnCircuitOpened'" error, then a few `BrokenCircuitException`s
+  instead of the `HttpRequestException` above. While open, orders-api fails instantly and **never calls
+  catalog-api**: those traces have no catalog-api span. Same incident, different message — don't treat it as a
+  second problem, and don't disable the breaker: it is protecting catalog-api.
 - Traces: the failing span is the `catalog-api GET /items/{id:int}` child, with an exception event.
 
 ## How to confirm

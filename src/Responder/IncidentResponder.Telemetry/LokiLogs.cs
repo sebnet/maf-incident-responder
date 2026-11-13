@@ -120,9 +120,9 @@ internal static partial class LokiLogs
 
     /// <summary>
     /// Polly's own line ("Execution attempt. Source: '-standard//Standard-Retry', Handled: 'True', Attempt: '3'...")
-    /// is library jargon: in Phase 1 runs the model read it as "the circuit breaker opened", which never happens in
-    /// s01. So the line is rewritten from its structured fields into plain words. Polly logs the attempt that gives
-    /// up at Error and the ones it will retry at Warning; <c>Attempt</c> is 0-based.
+    /// is library jargon the model has to interpret. So the line is rewritten from its structured fields into plain
+    /// words. Polly logs the attempt that gives up at Error and the ones it will retry at Warning; <c>Attempt</c> is
+    /// 0-based.
     /// </summary>
     private static string? DescribePollyAttempt(Entry e)
     {

@@ -64,8 +64,7 @@ public sealed class LgtmTelemetryQueryTests
     [Fact]
     public async Task Polly_jargon_never_reaches_the_model()
     {
-        // In Phase 1 runs the model read "Source: '-standard//Standard-Retry', Handled: 'True'" as a circuit breaker
-        // opening, which never happens in s01.
+        // "Source: '-standard//Standard-Retry', Handled: 'True'" is Polly jargon: the model should get plain facts.
         var telemetry = Create(FakeHttpMessageHandler.FromFixture("loki-orders-api-errors-s01.json"));
 
         var summary = await telemetry.QueryLogsAsync(new LogQuery("orders-api", S01Window), Ct);

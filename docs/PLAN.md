@@ -71,7 +71,9 @@ Tasks
 - [x] Implement `QueryMetricAsync` (Prometheus) + tests.
 - [x] Implement `GetTraceAsync` (Tempo) + tests.
 - [x] Run the CLI against the lab with s01 active. Iterate on tool outputs until they are compact and useful.
-      *(3 runs, all correct service. Fix: Polly log rewritten, the model was inventing a circuit breaker.
+      *(3 runs, all correct service. Polly log rewritten in plain words. It was done because the model reported a
+      circuit breaker that we thought never opened; it turned out the breaker does open intermittently during s01,
+      see docs/notes/lgtm-labels.md, so that was probably not a hallucination.
       Open: category is free text and doesn't fit the enum → decide in the structured output task. s02 not tried
       by hand yet: first look will be the baseline.)*
 - [ ] Structured output: produce a `Diagnosis` with `RunAsync<Diagnosis>` (add a `/diagnose <service>` command
