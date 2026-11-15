@@ -1,7 +1,12 @@
+using System.Globalization;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using IncidentResponder.Agents;
+using IncidentResponder.Core;
 using IncidentResponder.Tests.Fakes;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -15,13 +20,16 @@ public sealed class ToolCallMiddlewareTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private static (AIAgent Agent, StubTelemetryQuery Telemetry) CreateAgent(FakeChatClient chat, int maxRoundTrips)
+    private static (AIAgent Agent, StubTelemetryQuery Telemetry) CreateAgent(FakeChatClient chat, int maxRoundTrips) =>
+        CreateAgent(chat, new BudgetOptions { MaxRoundTrips = maxRoundTrips }, NullLogger<ToolCallMiddleware>.Instance, new StubTelemetryQuery());
+
+    private static (AIAgent Agent, StubTelemetryQuery Telemetry) CreateAgent(
+        FakeChatClient chat, BudgetOptions budget, ILogger<ToolCallMiddleware> logger, StubTelemetryQuery telemetry)
     {
-        var telemetry = new StubTelemetryQuery();
         var agent = OnCallAssistant.Create(
             chat,
             new TelemetryTools(telemetry, TimeProvider.System),
-            new ToolCallMiddleware(NullLogger<ToolCallMiddleware>.Instance, Options.Create(new BudgetOptions { MaxRoundTrips = maxRoundTrips })));
+            new ToolCallMiddleware(logger, Options.Create(budget)));
         return (agent, telemetry);
     }
 
@@ -96,5 +104,54 @@ public sealed class ToolCallMiddlewareTests
     public void Unconfigured_budget_defaults_to_a_safety_net_of_10()
     {
         Assert.Equal(10, new BudgetOptions().MaxRoundTrips);
+    }
+
+    // ---------- Result size ----------
+
+    [Fact]
+    public async Task Logs_the_size_of_each_result_as_the_model_receives_it()
+    {
+        var logger = new RecordingLogger<ToolCallMiddleware>();
+        var chat = new FakeChatClient().Enqueue(ToolTurn("a")).EnqueueText("final answer");
+        var (agent, _) = CreateAgent(chat, new BudgetOptions(), logger, new StubTelemetryQuery());
+
+        await agent.RunAsync("what's wrong?", cancellationToken: Ct);
+
+        var line = Assert.Single(logger.Entries, e => e.Level == LogLevel.Information).Message;
+        var match = Regex.Match(line, @"ok in \d+ ms, (\d+) chars \(~(\d+) tokens\)");
+        Assert.True(match.Success, line);
+
+        // The size is the compact JSON of what the model actually received.
+        var sent = (JsonElement)ResultFor(chat.Requests[1], "a").Result!;
+        Assert.Equal(JsonSerializer.Serialize(sent).Length, int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture));
+        Assert.DoesNotContain(logger.Entries, e => e.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    public async Task Warns_about_a_large_result_but_still_sends_it_whole()
+    {
+        var logger = new RecordingLogger<ToolCallMiddleware>();
+        var telemetry = new StubTelemetryQuery();
+        var longMessage = new string('x', 5000); // a tool that dumps instead of summarizing
+        telemetry.Logs = new LogSummary("a", TimeWindow.LastMinutes(TimeProvider.System, 15), 1,
+            [new LogGroup(longMessage, 1, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, null)]);
+        var chat = new FakeChatClient().Enqueue(ToolTurn("a")).EnqueueText("final answer");
+        var (agent, _) = CreateAgent(chat, new BudgetOptions { WarnResultChars = 4000 }, logger, telemetry);
+
+        await agent.RunAsync("what's wrong?", cancellationToken: Ct);
+
+        var warning = Assert.Single(logger.Entries, e => e.Level == LogLevel.Warning).Message;
+        Assert.Contains("above the warning threshold of 4000", warning, StringComparison.Ordinal);
+        var sent = (JsonElement)ResultFor(chat.Requests[1], "a").Result!;
+        Assert.Contains(longMessage, sent.GetRawText(), StringComparison.Ordinal); // never cut
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Rejects_a_result_size_threshold_below_one(int warnResultChars)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new ToolCallMiddleware(NullLogger<ToolCallMiddleware>.Instance, Options.Create(new BudgetOptions { WarnResultChars = warnResultChars })));
     }
 }

@@ -10,4 +10,11 @@ public sealed class BudgetOptions
     /// Default when not configured: a safety net well above what a normal investigation needs (4 in s01 runs).
     /// </summary>
     public int MaxRoundTrips { get; set; } = 10;
+
+    /// <summary>
+    /// A tool result above this many characters (compact JSON) logs a warning. Results are never cut: keeping them
+    /// small is the tools' job ("summaries, not dumps"). Typical results are 0.5–2 KB; 4,000 chars is about 1,000 tokens,
+    /// re-sent on every later round trip of the run.
+    /// </summary>
+    public int WarnResultChars { get; set; } = 4000;
 }
