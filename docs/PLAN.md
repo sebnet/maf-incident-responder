@@ -78,7 +78,9 @@ Tasks
       by hand yet: first look will be the baseline.)*
 - [x] Structured output: produce a `Diagnosis` with `RunAsync<Diagnosis>` (add a `/diagnose <service>` command
       or a separate method used by the eval runner).
-- [ ] Middleware: tool-call budget per run; log result sizes; warn on large outputs.
+- [ ] Middleware: round-trip budget per run (`FunctionInvocationContext.Iteration`, own message to the model when
+      reached); log result sizes; warn on large outputs. *(Was "tool-call budget": cost comes from model round trips
+      and the size of what each one re-sends, not from running tools. Tokens per run are measured in the eval runner.)*
 - [ ] Agent OpenTelemetry: wrap the agent with OTel (see `Agent_Step05_Observability`) and send it to LGTM too.
       You will see your agent's traces next to the app's.
 - [ ] Create `evals/IncidentResponder.Evals` (console): runs scenarios as described in `evals/README.md`,
