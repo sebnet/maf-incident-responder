@@ -126,16 +126,14 @@ During s01 (60 % errors on catalog-api, verified 2026-11-12):
 | p95 | 33 ms | 10 s |
 
 - Traffic collapses from 3.8 to ~0.35 req/s: the LoadGen sends one request at a time, and each failing order
-  waits through the retries. That keeps catalog-api at ~18 calls per 30 s (max 34), below the circuit breaker's
-  minimum throughput of 100.
-- **Correction (2026-11-13): the breaker does open, intermittently.** Despite the numbers above, Loki has 27
-  `OnCircuitOpened` / `OnCircuitHalfOpened` events in orders-api over ~30 h of s01 runs (Nov 12 from 16:25 and all
-  of Nov 13), every 20–60 min while the fault is active. While open, orders-api logs
-  `BrokenCircuitException: The circuit is now open and is not allowing calls.` and a Polly line
-  `Resilience event occurred. EventName: 'OnCircuitOpened', Source: '-standard//Standard-CircuitBreaker' ...`.
-  The short 13:04–13:11 window of the fixtures happened to have none, which is where "never opens" came from.
-  Why it opens at this traffic is not investigated (likely bursts above the threshold); what matters for the
-  responder is that a diagnosis mentioning the breaker during s01 can be correct.
+  waits through the retries. That keeps catalog-api at ~18 calls per 30 s on average (max 34).
+- The circuit breaker opens **intermittently**: every 20–60 min while the fault is active (27
+  `OnCircuitOpened` / `OnCircuitHalfOpened` events in orders-api over ~30 h of s01 runs, 2026-11-12/13), although
+  the average traffic is below its minimum throughput of 100 calls per 30 s (probably bursts; not investigated).
+  While open, orders-api logs `BrokenCircuitException: The circuit is now open and is not allowing calls.` and a
+  Polly line `Resilience event occurred. EventName: 'OnCircuitOpened', Source: '-standard//Standard-CircuitBreaker' ...`.
+  A short window can have no breaker events at all, so a diagnosis mentioning the breaker during s01 can be correct
+  or not depending on the window: check the logs before calling it a hallucination.
 - orders-api also returns **499** on `/orders` (about twice as many as 500s): the LoadGen's own 10 s attempt
   timeout cancels slow requests. The usual error-rate query (`5..`) does not count them.
 `/health` and `/alive` do not appear in `http_route` (filtered in ServiceDefaults, as intended).

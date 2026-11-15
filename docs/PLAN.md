@@ -71,16 +71,15 @@ Tasks
 - [x] Implement `QueryMetricAsync` (Prometheus) + tests.
 - [x] Implement `GetTraceAsync` (Tempo) + tests.
 - [x] Run the CLI against the lab with s01 active. Iterate on tool outputs until they are compact and useful.
-      *(3 runs, all correct service. Polly log rewritten in plain words. It was done because the model reported a
-      circuit breaker that we thought never opened; it turned out the breaker does open intermittently during s01,
-      see docs/notes/lgtm-labels.md, so that was probably not a hallucination.
-      Open: category is free text and doesn't fit the enum → decide in the structured output task. s02 not tried
-      by hand yet: first look will be the baseline.)*
+      *(3 runs, all correct service. Polly retry and circuit breaker logs reach the model in plain words. The breaker
+      opens intermittently during s01: see docs/notes/lgtm-labels.md. s02 not tried by hand yet: first look will be
+      the baseline.)*
 - [x] Structured output: produce a `Diagnosis` with `RunAsync<Diagnosis>` (add a `/diagnose <service>` command
       or a separate method used by the eval runner).
 - [ ] Middleware: round-trip budget per run (`FunctionInvocationContext.Iteration`, own message to the model when
-      reached); log result sizes; warn on large outputs. *(Was "tool-call budget": cost comes from model round trips
-      and the size of what each one re-sends, not from running tools. Tokens per run are measured in the eval runner.)*
+      reached); log result sizes; warn on large outputs. *(Cost per run = model round trips × the size of what each
+      one re-sends: the budget bounds the first, result sizes show the second. Tokens per run are measured in the
+      eval runner.)*
 - [ ] Agent OpenTelemetry: wrap the agent with OTel (see `Agent_Step05_Observability`) and send it to LGTM too.
       You will see your agent's traces next to the app's.
 - [ ] Create `evals/IncidentResponder.Evals` (console): runs scenarios as described in `evals/README.md`,
