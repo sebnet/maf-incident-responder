@@ -76,7 +76,7 @@ Tasks
       the baseline.)*
 - [x] Structured output: produce a `Diagnosis` with `RunAsync<Diagnosis>` (add a `/diagnose <service>` command
       or a separate method used by the eval runner).
-- [ ] Middleware: round-trip budget per run (`FunctionInvocationContext.Iteration`, own message to the model when
+- [x] Middleware: round-trip budget per run (`FunctionInvocationContext.Iteration`, own message to the model when
       reached); log result sizes; warn on large outputs. *(Cost per run = model round trips × the size of what each
       one re-sends: the budget bounds the first, result sizes show the second. Tokens per run are measured in the
       eval runner.)*
