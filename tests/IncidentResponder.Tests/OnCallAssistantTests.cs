@@ -2,6 +2,7 @@ using IncidentResponder.Agents;
 using IncidentResponder.Core;
 using IncidentResponder.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace IncidentResponder.Tests;
 
@@ -23,7 +24,7 @@ public sealed class OnCallAssistantTests
         var agent = OnCallAssistant.Create(
             chat,
             new TelemetryTools(telemetry, TimeProvider.System),
-            new ToolCallMiddleware(NullLogger<ToolCallMiddleware>.Instance));
+            new ToolCallMiddleware(NullLogger<ToolCallMiddleware>.Instance, Options.Create(new BudgetOptions())));
 
         // Act
         var response = await agent.RunAsync("what's wrong with orders-api?", cancellationToken: TestContext.Current.CancellationToken);

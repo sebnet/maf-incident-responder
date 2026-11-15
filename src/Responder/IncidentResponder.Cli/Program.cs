@@ -25,6 +25,7 @@ var lgtm = new LgtmOptions(
     new Uri(builder.Configuration["Lgtm:Prometheus"] ?? LgtmOptions.LocalDefaults.Prometheus.ToString()),
     new Uri(builder.Configuration["Lgtm:Tempo"] ?? LgtmOptions.LocalDefaults.Tempo.ToString()));
 
+builder.Services.Configure<BudgetOptions>(builder.Configuration.GetSection("Budget"));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(lgtm);
 builder.Services.AddHttpClient<ITelemetryQuery, LgtmTelemetryQuery>();

@@ -5,6 +5,7 @@ using IncidentResponder.Tests.Fakes;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace IncidentResponder.Tests;
 
@@ -40,7 +41,7 @@ public sealed class DiagnoseTests
         var agent = OnCallAssistant.Create(
             chat,
             new TelemetryTools(telemetry, TimeProvider.System),
-            new ToolCallMiddleware(NullLogger<ToolCallMiddleware>.Instance));
+            new ToolCallMiddleware(NullLogger<ToolCallMiddleware>.Instance, Options.Create(new BudgetOptions())));
         return (agent, telemetry);
     }
 
