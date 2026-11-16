@@ -11,8 +11,13 @@ namespace IncidentResponder.Agents;
 ///  - descriptions are written for the model: say what it returns and when to use it;
 ///  - read-only tools need no approval. Anything that changes the system lives elsewhere and requires approval.
 /// In Phase 2 these move behind an MCP server; the descriptions travel with them.
+///
+/// <paramref name="notBefore"/> optionally bounds every look-back window from below, whatever the model asks for.
+/// The eval runner sets it a few minutes before each fault injection, so a run never sees the telemetry of the
+/// previous one. The window actually used is part of each result (LogSummary/MetricSummary.Window), so the model
+/// sees it. Not set in the CLI.
 /// </summary>
-public sealed class TelemetryTools(ITelemetryQuery telemetry, TimeProvider time)
+public sealed class TelemetryTools(ITelemetryQuery telemetry, TimeProvider time, DateTimeOffset? notBefore = null)
 {
     public const string GetErrorLogsName = "get_error_logs";
     public const string GetMetricName = "get_metric";
@@ -55,5 +60,15 @@ public sealed class TelemetryTools(ITelemetryQuery telemetry, TimeProvider time)
         AIFunctionFactory.Create(GetTraceAsync, name: GetTraceName),
     ];
 
-    private TimeWindow Window(int minutes) => TimeWindow.LastMinutes(time, Math.Clamp(minutes, 1, MaxLookbackMinutes));
+    private TimeWindow Window(int minutes)
+    {
+        var window = TimeWindow.LastMinutes(time, Math.Clamp(minutes, 1, MaxLookbackMinutes));
+        if (notBefore is not { } floor || window.From >= floor)
+        {
+            return window;
+        }
+
+        // A floor in the future would make From > To: the window is then empty instead of invalid.
+        return window with { From = floor < window.To ? floor : window.To };
+    }
 }
