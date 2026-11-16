@@ -96,8 +96,9 @@ while (true)
 
         // A manual alert: the eval runner will pass the scenario's real one instead.
         var alert = new Alert(service, "manual", $"Manual diagnosis requested for {service}.", time.GetUtcNow());
-        var diagnosis = await OnCallAssistant.DiagnoseAsync(agent, alert);
-        Console.WriteLine(JsonSerializer.Serialize(diagnosis, json));
+        var response = await OnCallAssistant.DiagnoseAsync(agent, alert);
+        Console.WriteLine(JsonSerializer.Serialize(response.Result, json));
+        Console.WriteLine($"(tokens: {response.Usage?.InputTokenCount} in, {response.Usage?.OutputTokenCount} out)");
         continue;
     }
 

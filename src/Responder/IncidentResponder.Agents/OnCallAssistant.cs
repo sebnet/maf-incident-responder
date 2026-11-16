@@ -46,18 +46,20 @@ public static class OnCallAssistant
     }
 
     /// <summary>
-    /// Investigates an alert and returns a typed <see cref="Diagnosis"/> (structured output).
-    /// Used by the CLI's /diagnose command and, later, by the eval runner.
+    /// Investigates an alert with structured output. The response is the full record of the run:
+    /// <c>Result</c> is the typed <see cref="Diagnosis"/>, <c>Usage</c> the tokens of all round trips together, and
+    /// <c>Messages</c> every tool call, tool result and the final answer (what the eval runner counts).
+    /// <c>Result</c> deserializes when read, so an answer that doesn't fit <see cref="Diagnosis"/> throws there.
+    /// Used by the CLI's /diagnose command and by the eval runner.
     /// Always starts a fresh session: a diagnosis must not depend on earlier chat, so runs are comparable.
     /// </summary>
-    public static async Task<Diagnosis> DiagnoseAsync(AIAgent agent, Alert alert, CancellationToken cancellationToken = default)
+    public static async Task<AgentResponse<Diagnosis>> DiagnoseAsync(AIAgent agent, Alert alert, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(agent);
         ArgumentNullException.ThrowIfNull(alert);
 
         AgentSession agentSession = await agent.CreateSessionAsync(cancellationToken);
-        var agentResponse = await agent.RunAsync<Diagnosis>(DiagnoseRequest(alert), agentSession, cancellationToken: cancellationToken);
-        return agentResponse.Result;
+        return await agent.RunAsync<Diagnosis>(DiagnoseRequest(alert), agentSession, cancellationToken: cancellationToken);
     }
 
     /// <summary>

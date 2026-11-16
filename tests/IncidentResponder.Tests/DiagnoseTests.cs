@@ -53,7 +53,7 @@ public sealed class DiagnoseTests
             .EnqueueText(DiagnosisJson);
         var (agent, telemetry) = CreateAgent(chat);
 
-        var diagnosis = await OnCallAssistant.DiagnoseAsync(agent, OrdersErrors, Ct);
+        var diagnosis = (await OnCallAssistant.DiagnoseAsync(agent, OrdersErrors, Ct)).Result;
 
         Assert.Equal("catalog-api", diagnosis.RootCauseService);
         Assert.Equal(RootCauseCategory.ApplicationError, diagnosis.Category);
@@ -118,7 +118,10 @@ public sealed class DiagnoseTests
         var chat = new FakeChatClient().EnqueueText(string.Empty);
         var (agent, _) = CreateAgent(chat);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => OnCallAssistant.DiagnoseAsync(agent, OrdersErrors, Ct));
+        var response = await OnCallAssistant.DiagnoseAsync(agent, OrdersErrors, Ct);
+
+        // The run itself succeeds; reading Result is what fails (it deserializes on read).
+        var ex = Assert.Throws<InvalidOperationException>(() => response.Result);
         Assert.Contains("did not contain JSON", ex.Message, StringComparison.Ordinal);
     }
 
@@ -129,6 +132,28 @@ public sealed class DiagnoseTests
         var chat = new FakeChatClient().EnqueueText("""{ "rootCauseService": "catalog-api", "category": "Banana" }""");
         var (agent, _) = CreateAgent(chat);
 
-        await Assert.ThrowsAnyAsync<JsonException>(() => OnCallAssistant.DiagnoseAsync(agent, OrdersErrors, Ct));
+        var response = await OnCallAssistant.DiagnoseAsync(agent, OrdersErrors, Ct);
+
+        Assert.ThrowsAny<JsonException>(() => response.Result);
+    }
+
+    [Fact]
+    public async Task The_response_carries_the_whole_run_usage_and_messages()
+    {
+        // What the eval runner reads besides the diagnosis: tokens of all round trips, and every tool call.
+        var toolTurn = new ChatResponse(new ChatMessage(ChatRole.Assistant,
+            [new FunctionCallContent("call-1", TelemetryTools.GetErrorLogsName, new Dictionary<string, object?> { ["service"] = "catalog-api" })]))
+        { Usage = new UsageDetails { InputTokenCount = 1000, OutputTokenCount = 10 } };
+        var answer = new ChatResponse(new ChatMessage(ChatRole.Assistant, DiagnosisJson))
+        { Usage = new UsageDetails { InputTokenCount = 3000, OutputTokenCount = 200 } };
+        var (agent, _) = CreateAgent(new FakeChatClient().Enqueue(toolTurn).Enqueue(answer));
+
+        var response = await OnCallAssistant.DiagnoseAsync(agent, OrdersErrors, Ct);
+
+        Assert.Equal(4000, response.Usage?.InputTokenCount); // summed over both round trips
+        Assert.Equal(210, response.Usage?.OutputTokenCount);
+        var call = Assert.Single(response.Messages.SelectMany(m => m.Contents).OfType<FunctionCallContent>());
+        Assert.Equal(TelemetryTools.GetErrorLogsName, call.Name);
+        Assert.Equal("catalog-api", response.Result.RootCauseService);
     }
 }
