@@ -60,7 +60,16 @@ public static class OnCallAssistant
         return agentResponse.Result;
     }
 
-    public static AIAgent Create(IChatClient chatClient, TelemetryTools tools, ToolCallMiddleware toolMiddleware)
+    /// <summary>
+    /// ActivitySource and Meter name of the agent's OpenTelemetry spans and metrics. The host (CLI, eval runner)
+    /// subscribes to it and chooses the exporter; this project only emits.
+    /// </summary>
+    public const string TelemetrySourceName = "IncidentResponder.Agents";
+
+    /// <param name="sensitiveTelemetry">
+    /// Also put prompts, tool arguments, tool results and answers on the spans. Only for the local lab.
+    /// </param>
+    public static AIAgent Create(IChatClient chatClient, TelemetryTools tools, ToolCallMiddleware toolMiddleware, bool sensitiveTelemetry = false)
     {
         ArgumentNullException.ThrowIfNull(chatClient);
         ArgumentNullException.ThrowIfNull(tools);
@@ -73,6 +82,10 @@ public static class OnCallAssistant
                 description: "Investigates production symptoms using read-only logs, metrics and traces.",
                 tools: tools.AsAITools())
             .AsBuilder()
+            // Agent-level telemetry: an invoke_agent span per run, and MAF also turns on its chat telemetry below the
+            // function-calling loop, so each model round trip gets its own chat span and each tool an execute_tool span.
+            // Outermost (first Use), so it sees every run, including runs other middleware might stop.
+            .UseOpenTelemetry(TelemetrySourceName, configure: agent => agent.EnableSensitiveData = sensitiveTelemetry)
             .Use(toolMiddleware.InvokeAsync)
             .Build();
     }

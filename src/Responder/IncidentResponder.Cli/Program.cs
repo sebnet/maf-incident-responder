@@ -7,6 +7,10 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 // Phase 1 entry point: an interactive on-call assistant in the terminal.
 // Config: appsettings.json + user-secrets (Development). See README "Run".
@@ -25,6 +29,22 @@ var lgtm = new LgtmOptions(
     new Uri(builder.Configuration["Lgtm:Prometheus"] ?? LgtmOptions.LocalDefaults.Prometheus.ToString()),
     new Uri(builder.Configuration["Lgtm:Tempo"] ?? LgtmOptions.LocalDefaults.Tempo.ToString()));
 
+// The agent's own traces and metrics → LGTM (Tempo / Prometheus), next to the lab's. Logs stay on the console:
+// exported, they would land in Loki next to the logs the agent's tools query.
+var telemetry = builder.Configuration.GetSection("Telemetry");
+var otlp = new Uri(telemetry["OtlpEndpoint"] ?? "http://localhost:4319");
+var sensitiveTelemetry = telemetry.GetValue<bool>("SensitiveData");
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(telemetry["ServiceName"] ?? "incident-responder"))
+    .WithTracing(tracing => tracing
+        .AddSource(OnCallAssistant.TelemetrySourceName)
+        .AddHttpClientInstrumentation() // tool queries to Loki/Prometheus/Tempo and calls to Foundry, as child spans
+        .AddOtlpExporter(o => { o.Protocol = OtlpExportProtocol.HttpProtobuf; o.Endpoint = new Uri(otlp, "v1/traces"); }))
+    .WithMetrics(metrics => metrics
+        .AddMeter(OnCallAssistant.TelemetrySourceName) // token usage and operation duration
+        .AddOtlpExporter(o => { o.Protocol = OtlpExportProtocol.HttpProtobuf; o.Endpoint = new Uri(otlp, "v1/metrics"); }));
+// Not UseOtlpExporter(): it also turns on log export. A programmatic Endpoint is used as-is, hence the /v1/... paths.
+
 builder.Services.Configure<BudgetOptions>(builder.Configuration.GetSection("Budget"));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(lgtm);
@@ -35,9 +55,11 @@ builder.Services.AddSingleton<IChatClient>(_ => ChatClientFactory.CreateFoundry(
 builder.Services.AddSingleton(sp => OnCallAssistant.Create(
     sp.GetRequiredService<IChatClient>(),
     sp.GetRequiredService<TelemetryTools>(),
-    sp.GetRequiredService<ToolCallMiddleware>()));
+    sp.GetRequiredService<ToolCallMiddleware>(),
+    sensitiveTelemetry));
 
 using var host = builder.Build();
+await host.StartAsync(); // starts the OpenTelemetry providers (hosted service); StopAsync at the end flushes them
 
 var agent = host.Services.GetRequiredService<AIAgent>();
 AgentSession session = await agent.CreateSessionAsync();
@@ -87,4 +109,5 @@ while (true)
     Console.WriteLine();
 }
 
+await host.StopAsync();
 return 0;
