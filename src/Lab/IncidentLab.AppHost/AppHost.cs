@@ -9,12 +9,16 @@ var builder = DistributedApplication.CreateBuilder(args);
 // ---------------------------------------------------------------------------------------------
 var lgtm = builder.AddContainer("lgtm", "grafana/otel-lgtm", "0.40.0")
     .WithHttpEndpoint(port: 3000, targetPort: 3000, name: "grafana")
-    // No fixed host port for OTLP: services get it through GetEndpoint below, and 4318 is often taken
-    // (any other Aspire dashboard or collector on the machine). Fixed ports only where humans/the CLI need them.
-    .WithHttpEndpoint(targetPort: 4318, name: "otlp-http")
+    // OTLP on host port 4319, not the standard 4318 (often taken by another Aspire dashboard or collector on the
+    // machine). Lab services get it through GetEndpoint below; the responder CLI, which runs outside Aspire, needs a
+    // fixed port to send the agent's own traces (src/Responder/IncidentResponder.Cli/appsettings.json).
+    .WithHttpEndpoint(port: 4319, targetPort: 4318, name: "otlp-http")
     .WithHttpEndpoint(port: 3100, targetPort: 3100, name: "loki")
     .WithHttpEndpoint(port: 9090, targetPort: 9090, name: "prometheus")
-    .WithHttpEndpoint(port: 3200, targetPort: 3200, name: "tempo");
+    .WithHttpEndpoint(port: 3200, targetPort: 3200, name: "tempo")
+    // Tempo with a larger attribute size limit, so the agent's spans keep their full prompts and tool results.
+    // Relative path: resolved from the AppHost project directory.
+    .WithBindMount("lgtm/tempo-config.yaml", "/otel-lgtm/tempo-config.yaml", isReadOnly: true);
 
 var otlp = lgtm.GetEndpoint("otlp-http");
 

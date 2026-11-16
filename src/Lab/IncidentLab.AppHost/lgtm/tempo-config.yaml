@@ -1,0 +1,54 @@
+# Tempo config for the lab, mounted over /otel-lgtm/tempo-config.yaml by the AppHost.
+# It is the file shipped in grafana/otel-lgtm:0.40.0 plus one setting (distributor.max_attribute_bytes).
+# When the image tag changes, copy the new image's file again and re-apply that setting.
+
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9096
+
+distributor:
+  # Tempo's default is 2048: longer attribute values are cut before storage. The agent's spans carry prompts,
+  # tool definitions and tool results (gen_ai.* attributes) that are usually longer, and a cut JSON value is
+  # unreadable. The lab stores little data, so the memory protection behind the default isn't needed here.
+  max_attribute_bytes: 65536
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "127.0.0.1:4417"
+        http:
+          endpoint: "127.0.0.1:4418"
+
+memberlist:
+  bind_addr: [127.0.0.1]
+  bind_port: 7947
+
+querier:
+  frontend_worker:
+    frontend_address: 127.0.0.1:9096
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /data/tempo/wal
+    local:
+      path: /data/tempo/blocks
+
+metrics_generator:
+  processor:
+    span_metrics:
+      dimensions:
+        - service_name
+        - operation
+        - status_code
+  storage:
+    path: /data/tempo/generator/wal
+    remote_write:
+      - url: http://127.0.0.1:9090/api/v1/write
+        send_exemplars: true
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics]

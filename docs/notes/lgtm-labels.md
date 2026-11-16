@@ -13,8 +13,7 @@ All three APIs answer directly from the host. Grafana's datasource proxy is **no
 | Prometheus | `http://localhost:9090` | `GET /api/v1/query?query=up` |
 | Tempo | `http://localhost:3200` | `GET /api/search?q={}` (TraceQL) |
 | Grafana UI | `http://localhost:3000` | — |
-
-The OTLP receiver (container port 4318) has no fixed host port: Aspire assigns one and passes it to the services.
+| OTLP receiver (http/protobuf) | `http://localhost:4319` | container port 4318; used by the responder CLI for the agent's own traces |
 
 ADR 0002 check: the `OTEL_EXPORTER_OTLP_ENDPOINT` override in the AppHost wins. The Aspire dashboard receives no
 telemetry from the services (`aspire otel logs` → "No logs found"), and LGTM receives all of it.
@@ -159,6 +158,12 @@ A typical trace: `loadgen POST` → `orders-api POST /orders` → `orders-api GE
 `catalog-api GET /items/{id:int}`, plus an `orders-api` `postgresql` span (scope `Npgsql`) with `db.query.text`,
 `db.namespace` = `ordersdb`. The root is `loadgen`, so search by `resource.service.name` for the span you
 care about, not by `rootServiceName`.
+
+Attribute size: Tempo cuts every attribute value longer than `distributor.max_attribute_bytes` (default 2048) before
+storing it, with nothing in Grafana's trace view to show it (only the metric
+`tempo_distributor_attributes_truncated_total`). The agent's `gen_ai.*` attributes (prompts, tool definitions, tool
+results) are often longer, and a cut JSON value is unreadable. The lab mounts its own Tempo config with a 64 KB limit:
+`src/Lab/IncidentLab.AppHost/lgtm/tempo-config.yaml` (the image's file plus that one setting).
 
 ## Response shapes (what `LgtmTelemetryQuery` parses, verified 2026-11-12)
 
