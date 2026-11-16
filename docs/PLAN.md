@@ -80,7 +80,7 @@ Tasks
       reached); log result sizes; warn on large outputs. *(Cost per run = model round trips × the size of what each
       one re-sends: the budget bounds the first, result sizes show the second. Tokens per run are measured in the
       eval runner.)*
-- [ ] Agent OpenTelemetry: wrap the agent with OTel (see `Agent_Step05_Observability`) and send it to LGTM too.
+- [x] Agent OpenTelemetry: wrap the agent with OTel (see `Agent_Step05_Observability`) and send it to LGTM too.
       You will see your agent's traces next to the app's.
 - [ ] Create `evals/IncidentResponder.Evals` (console): runs scenarios as described in `evals/README.md`,
       records accuracy, tool calls, tokens, cost, latency.
