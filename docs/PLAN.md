@@ -237,6 +237,20 @@ Blog: *"Letting an agent write the postmortem (and grading it)"* + the retrospec
 
 ---
 
+## Ideas for the future (not planned)
+
+Nice to have, outside the phases. Pick one up only if an eval shows it would help.
+
+- **Service map tool (`get_service_map`).** Tempo's metrics-generator already writes service-graph metrics to
+  Prometheus (`traces_service_graph_request_total`, `..._failed_total`, `..._server_seconds_*`, labels `client` and
+  `server`). A tool could summarize them as caller → callee edges with request rate, error ratio and p95, so the agent
+  learns the topology from data instead of the prompt, and sees the failing edge in one call (in s01:
+  orders-api → catalog-api). Caveats: callees that send no traces appear as virtual nodes named after the server
+  address (e.g. `localhost`); untraced or sampled-out traffic is missing. Commercial AI SRE agents build a similar map
+  (topology graphs, "world models").
+
+---
+
 ## After this
 
 Phase 2 of the learning path: apply MAF to the incremental legacy migration idea (Strangler Fig + YARP +
