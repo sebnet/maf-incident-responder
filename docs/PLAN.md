@@ -82,7 +82,7 @@ Tasks
       eval runner.)*
 - [x] Agent OpenTelemetry: wrap the agent with OTel (see `Agent_Step05_Observability`) and send it to LGTM too.
       You will see your agent's traces next to the app's.
-- [ ] Create `evals/IncidentResponder.Evals` (console): runs scenarios as described in `evals/README.md`,
+- [x] Create `evals/IncidentResponder.Evals` (console): runs scenarios as described in `evals/README.md`,
       records accuracy, tool calls, tokens, cost, latency.
 - [ ] Baseline: run s01 and s02 ×3 → `evals/results/phase-1.md`.
 - [ ] Notes: `docs/notes/chatclientagent.md`, `tools-design.md`, `middleware.md`, `structured-output.md`.
