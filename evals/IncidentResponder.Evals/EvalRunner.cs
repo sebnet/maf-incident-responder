@@ -35,7 +35,12 @@ public sealed class EvalRunner(EvalContext context, LabControl lab, EvalSettings
     public const string ActivitySourceName = "IncidentResponder.Evals";
 
     private static readonly ActivitySource Source = new(ActivitySourceName);
-    private static readonly JsonSerializerOptions JsonLine = new(JsonSerializerDefaults.Web);
+    // Relaxed escaping: the default escapes characters like + and ' (+, ') for HTML safety, which makes the
+    // file hard to read and search ("c432642+dirty" would not be found). These files are never embedded in HTML.
+    private static readonly JsonSerializerOptions JsonLine = new(JsonSerializerDefaults.Web)
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     private readonly List<RunRecord> _records = [];
 
