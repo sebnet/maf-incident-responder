@@ -14,7 +14,9 @@ using OpenTelemetry.Trace;
 // Eval runner. Needs the lab running (it injects faults through /_ops/runtime) and Foundry access (real model, real cost).
 // Settings: appsettings.json, user-secrets (shared with the CLI), environment, and the command line, e.g.
 //   dotnet run --project evals/IncidentResponder.Evals -- --Evals:Scenarios s01,s02 --Evals:Repetitions 3
-var builder = Host.CreateApplicationBuilder(args);
+// Content root = the program's folder, where appsettings.json is copied. The default (current directory) would miss
+// it when launched from the repo root with `dotnet run --project`.
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { Args = args, ContentRootPath = AppContext.BaseDirectory });
 var config = builder.Configuration;
 
 var endpoint = config["Foundry:ProjectEndpoint"];
@@ -37,8 +39,28 @@ if (baseline > settle)
 
 var repoRoot = RepoInfo.FindRoot(AppContext.BaseDirectory);
 var only = (evals["Scenarios"] ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-var scenarios = ScenarioLoader.LoadReady(Path.Combine(repoRoot, "evals", "scenarios"), only);
-var prices = config.GetSection("Prices").Get<Dictionary<string, ModelPrice>>() ?? [];
+IReadOnlyList<Scenario> scenarios;
+try
+{
+    scenarios = ScenarioLoader.LoadReady(Path.Combine(repoRoot, "evals", "scenarios"), only);
+}
+catch (ArgumentException ex)
+{
+    Console.Error.WriteLine(ex.Message);
+    return 1;
+}
+var pricesSection = config.GetSection("Prices");
+if (pricesSection.GetChildren().FirstOrDefault(c => c.Value is not null) is { } flat)
+{
+    // A scalar directly under Prices: the deployment-name level is missing.
+    Console.Error.WriteLine($"""
+        Prices:{flat.Key} is a value, but Prices is keyed by deployment name (Foundry:Model). Expected:
+          "Prices": {"{"} "{config["Foundry:Model"] ?? "<deployment>"}": {"{"} "InputPerMillion": ..., "CachedInputPerMillion": ..., "OutputPerMillion": ... {"}"} {"}"}
+        """);
+    return 1;
+}
+
+var prices = pricesSection.Get<Dictionary<string, ModelPrice>>() ?? [];
 var settings = new EvalSettings(
     evals["Phase"] ?? "phase-1",
     evals.GetValue("Repetitions", 3),
@@ -50,6 +72,16 @@ var settings = new EvalSettings(
     prices);
 
 var labServices = config.GetSection("Lab:Services").GetChildren().ToDictionary(c => c.Key, c => new Uri(c.Value!));
+// Checked before anything runs: finding out after the first 5-minute settle wastes the time and, worse, the initial
+// "clear all faults" would have silently cleared nothing.
+var unknownTargets = scenarios.Select(s => s.Inject.Target).Distinct().Where(t => !labServices.ContainsKey(t)).ToList();
+if (labServices.Count == 0 || unknownTargets.Count > 0)
+{
+    Console.Error.WriteLine(labServices.Count == 0
+        ? "Lab:Services is empty: is appsettings.json being loaded?"
+        : $"Scenario targets not in Lab:Services: {string.Join(", ", unknownTargets)}. Configured: {string.Join(", ", labServices.Keys)}.");
+    return 1;
+}
 var lgtm = new LgtmOptions(
     new Uri(config["Lgtm:Loki"] ?? LgtmOptions.LocalDefaults.Loki.ToString()),
     new Uri(config["Lgtm:Prometheus"] ?? LgtmOptions.LocalDefaults.Prometheus.ToString()),
