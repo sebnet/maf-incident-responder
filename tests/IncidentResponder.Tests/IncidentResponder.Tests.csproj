@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\src\Responder\IncidentResponder.Agents\IncidentResponder.Agents.csproj" />
     <ProjectReference Include="..\..\src\Responder\IncidentResponder.Telemetry\IncidentResponder.Telemetry.csproj" />
     <ProjectReference Include="..\..\src\Lab\IncidentLab.Platform\IncidentLab.Platform.csproj" />
+    <ProjectReference Include="..\..\evals\IncidentResponder.Evals\IncidentResponder.Evals.csproj" />
   </ItemGroup>
 
   <ItemGroup>

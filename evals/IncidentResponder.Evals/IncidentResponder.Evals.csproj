@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Eval runner: injects each scenario's fault into the lab, runs a diagnosis with the real model, scores it
+       against the scenario's ground truth. Manual (real model, real cost): not run in CI. See evals/README.md. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Same secrets as the CLI, so one `dotnet user-secrets set "Foundry:..."` configures both. -->
+    <UserSecretsId>incident-responder-cli</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Responder\IncidentResponder.Core\IncidentResponder.Core.csproj" />
+    <ProjectReference Include="..\..\src\Responder\IncidentResponder.Telemetry\IncidentResponder.Telemetry.csproj" />
+    <ProjectReference Include="..\..\src\Responder\IncidentResponder.Agents\IncidentResponder.Agents.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -25,6 +25,10 @@
     <Project Path="src/Responder/IncidentResponder.Agents/IncidentResponder.Agents.csproj" />
     <Project Path="src/Responder/IncidentResponder.Cli/IncidentResponder.Cli.csproj" />
   </Folder>
+  <Folder Name="/evals/">
+    <File Path="evals/README.md" />
+    <Project Path="evals/IncidentResponder.Evals/IncidentResponder.Evals.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/IncidentResponder.Tests/IncidentResponder.Tests.csproj" />
   </Folder>

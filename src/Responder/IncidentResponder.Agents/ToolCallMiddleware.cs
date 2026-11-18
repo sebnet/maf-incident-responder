@@ -26,6 +26,9 @@ namespace IncidentResponder.Agents;
 /// </summary>
 public sealed partial class ToolCallMiddleware(ILogger<ToolCallMiddleware> logger, IOptions<BudgetOptions> budget)
 {
+    /// <summary>Start of the tool result the model gets when the budget is spent (the eval runner counts these).</summary>
+    public const string BudgetExhaustedMessage = "Round-trip budget exhausted";
+
     private readonly BudgetOptions _budget = Validate(budget);
 
     public async ValueTask<object?> InvokeAsync(
@@ -38,7 +41,7 @@ public sealed partial class ToolCallMiddleware(ILogger<ToolCallMiddleware> logge
         if (roundTrip > _budget.MaxRoundTrips)
         {
             LogRefused(agent, context, roundTrip);
-            return $"Round-trip budget exhausted ({_budget.MaxRoundTrips} round trips with tools). This tool was not run. " +
+            return $"{BudgetExhaustedMessage} ({_budget.MaxRoundTrips} round trips with tools). This tool was not run. " +
                    "Do not call more tools. Answer now with the evidence you already have.";
         }
 
