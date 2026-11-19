@@ -5,6 +5,7 @@ code matches the article even after MAF moves on.
 
 | Phase | Working title | Tag | Status |
 |---|---|---|---|
+| Intro | I'm learning Microsoft Agent Framework by building an on-call agent, in public | — | [Published](https://incident-responder-1.hashnode.dev/i-m-learning-microsoft-agent-framework-by-building-an-on-call-agent-in-public) (2026-11-19) |
 | 0 | Building a lab that breaks on purpose: Aspire + OpenTelemetry + Grafana LGTM | `phase-0` | — |
 | 1 | An on-call assistant with Microsoft Agent Framework: tools that don't drown the model | `phase-1` | — |
 | 2 | Giving the agent a team memory: MCP tools, runbook RAG and incident memory | `phase-2` | — |
