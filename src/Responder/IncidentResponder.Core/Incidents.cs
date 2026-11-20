@@ -65,8 +65,10 @@ public sealed record Diagnosis(
     [property: Description(
         "What is wrong in the root-cause service. ApplicationError: running but failing requests because of its own code or data. " +
         "DependencyFailure: down, unreachable or timing out at network level. Latency: slow but not failing. " +
-        "DatabaseConnectivity: cannot get or use database connections. BadDeployment: started with a deployment or config change. " +
-        "ResourceSaturation: CPU, memory, threads or queues exhausted. Unknown: not enough evidence.")]
+        "DatabaseConnectivity: cannot get or use database connections, including an exhausted connection pool. " +
+        "BadDeployment: started with a deployment or config change. " +
+        "ResourceSaturation: CPU, memory, threads or queues exhausted (database connection pools are DatabaseConnectivity). " +
+        "Unknown: not enough evidence.")]
     RootCauseCategory Category,
     [property: Description("Root cause in one sentence")] string RootCause,
     [property: Description("0..1")] double Confidence,
