@@ -18,9 +18,14 @@ diagnosing two injected incidents three times each. Every later phase is compare
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | s01-catalog-errors | 3 | 3/3 | 3/3 | 3/3 | 3/3 | 3.3 | 3.3 | 5649 / 344 | $0.0083 | 12.2 s | 0 | 0 |
 | s02-orders-latency | 3 | 3/3 | 3/3 | 3/3 | 3/3 | 3.0 | 3.0 | 3828 / 314 | $0.0067 | 10.8 s | 0 | 0 |
+| s03-db-pool-exhaustion | 3 | 3/3 | **0/3** | 3/3 | **0/3** | 3.0 | 3.0 | 4160 / 309 | $0.0067 | 11.5 s | 0 | 0 |
 
 **Exit criterion met:** both scenarios correct in at least 2 of 3 runs (6/6), cost per diagnosis known:
 about **$0.002–0.003** per diagnosis, 10–13 s.
+
+s03 isn't part of the exit criterion. It was run afterwards (2026-11-20, commit `24ed108`: same agent, prompt and
+tools; the only change since `d8f4a51` is the runner's JSON escaping) so that it has a Phase 1 number before
+Phase 2 adds the runbooks. Raw runs: `evals/runs/20261120-204030-phase-1.jsonl`.
 
 ## How the agent investigated
 
@@ -34,7 +39,24 @@ logs (empty) → catalog-api p95 (stable at ~4.8 ms) → "the delay is inside or
 dependency ruled out with data rather than assumed. It never looked at a trace: with no error logs it has no
 trace id to start from, and no tool to search traces (see below).
 
+**s03 (orders-api Postgres pool exhausted by a background job).** The same three steps in all three runs:
+orders-api error logs → error rate → one sample trace. Every run found the right service and the right mechanism
+("connection pool exhaustion", `NpgsqlException`, max pool size 20), with confidence 1. Every run labelled it
+`ResourceSaturation` instead of `DatabaseConnectivity`, so it scores 0/3. None of them found *what* was holding the
+connections (the export job): its start is an Information log and its queries are in spans the agent never opened.
+The first suggested action in two runs was "increase Max Pool Size", which the team's runbook explicitly says not
+to do.
+
 ## Observations
+
+- **s03's wrong category is a schema problem, not a reasoning one.** The definitions the model reads are on
+  `Diagnosis.Category`: `DatabaseConnectivity: cannot get or use database connections` and
+  `ResourceSaturation: CPU, memory, threads or queues exhausted`. "Pool exhausted" is only in the enum value's own
+  `[Description]`, which doesn't reach the schema (`docs/notes/structured-output.md`). So the model saw
+  "exhausted" under `ResourceSaturation` and nothing about pools under `DatabaseConnectivity`. Fixing the property
+  description is a prompt change: its own commit and eval run, not part of this baseline. The ground truth stays as
+  written. A connection pool *is* a saturated resource, so the two categories overlap, and the taxonomy should say
+  which one wins.
 
 - **A misattributed evidence source, scored as fully correct.** In s01 #2 the evidence cites
   `[logs:catalog-api] … InvalidOperationException` although that run never queried catalog-api's logs (its tools
@@ -65,5 +87,6 @@ trace id to start from, and no tool to search traces (see below).
 - Score the evidence, not only the answer: every cited source must correspond to a tool the agent actually called.
 - A way to reach traces without error logs (search by service and duration) before adding latency scenarios that
   need it.
-- s03 (database pool exhaustion) is ready but not in this baseline: run it before Phase 2 changes anything, so it
-  has a Phase 1 number too.
+- s03: fix the category definitions on `Diagnosis.Category` (say where pool exhaustion goes) and re-run s01–s03,
+  since the change can move the other scenarios too. Phase 2 questions for s03: does the runbook stop the "raise
+  Max Pool Size" advice, and does anything lead the agent to the job holding the connections?
