@@ -27,6 +27,29 @@ s03 isn't part of the exit criterion. It was run afterwards (2026-11-20, commit 
 tools; the only change since `d8f4a51` is the runner's JSON escaping) so that it has a Phase 1 number before
 Phase 2 adds the runbooks. Raw runs: `evals/runs/20261120-204030-phase-1.jsonl`.
 
+## After the category fix (`b035bb8`)
+
+s03's 0/3 was the category definitions, not the investigation (see Observations). `b035bb8` says on
+`Diagnosis.Category` that an exhausted connection pool is `DatabaseConnectivity`, and that pools are not
+`ResourceSaturation`. A prompt change, so all three scenarios were re-run (2026-11-20, raw runs
+`evals/runs/20261120-215217-phase-1.jsonl`):
+
+| Scenario | Runs | Service | Category | Mentions | All correct | Round trips (avg) | Tool calls (avg) | Tokens in / out (avg) | Est. cost (total) | Latency (avg) | Budget hits | Errors |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| s01-catalog-errors | 3 | 3/3 | 3/3 | 3/3 | 3/3 | 4.0 | 4.0 | 7152 / 356 | $0.0088 | 14.0 s | 0 | 0 |
+| s02-orders-latency | 3 | 3/3 | 3/3 | 3/3 | 3/3 | 3.3 | 3.3 | 4478 / 315 | $0.0072 | 10.9 s | 0 | 0 |
+| s03-db-pool-exhaustion | 3 | 3/3 | **3/3** | 3/3 | **3/3** | 3.0 | 3.0 | 4195 / 298 | $0.0065 | 9.8 s | 0 | 0 |
+
+**9/9.** These are the numbers Phase 2 is compared against.
+
+- s03 went from 0/3 to 3/3 with the same tools and the same investigation: only the wording of the schema changed.
+- s01 used more input tokens (7,152 vs 5,649 on average) because all three runs took 4 round trips instead of 3–4,
+  and each extra one re-sends the conversation. The longer description adds only a few dozen tokens per call, so
+  this is most likely run-to-run variance. Not proven with 3 runs; watch it in Phase 2.
+- **s03's advice didn't change.** All three runs still suggest "increase Max Pool Size or Timeout" first or
+  second, and none finds the export job holding the connections. Expected: the agent still has no runbook and no
+  way to see what holds the pool. That's the Phase 2 baseline for s03.
+
 ## How the agent investigated
 
 **s01 (catalog-api errors, alert on orders-api).** Always started from the alerting service's error logs, then
