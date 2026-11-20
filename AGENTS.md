@@ -179,7 +179,7 @@ blog draft in `blog/`.
 
 \* ~15 h/week.
 
-**Current phase:** 1 — see `docs/PLAN.md` for the next unchecked task.
+**Current phase:** 2 — see `docs/PLAN.md` for the next unchecked task.
 
 ## 8. Commands
 
